@@ -61,7 +61,9 @@ jobs:
       - name: Print toolchain
         run: xcodebuild -version
       - name: Install iOS 16.4 simulator runtime
-        run: sudo xcodes runtimes install 'iOS 16.4'
+        run: |
+          command -v xcodes >/dev/null || brew install xcodesorg/made/xcodes
+          sudo xcodes runtimes install 'iOS 16.4'
       - name: Create iOS 16 simulator
         run: xcrun simctl create 'iPhone-14-iOS-16-4' 'iPhone 14' 'iOS16.4'
       - name: Test on iOS 16 Simulator

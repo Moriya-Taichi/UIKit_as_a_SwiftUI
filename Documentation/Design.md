@@ -45,8 +45,7 @@ the tests on the minimum deployment target:
 
 - Xcode 16 / iOS 18 SDK
 - Xcode 27 / iOS 27 SDK
-- Xcode 16 with a downloaded iOS 16.4 simulator runtime, to run the tests on
-  the minimum deployment target
+- Xcode 16 with a downloaded iOS 16.4 simulator runtime
 
 References:
 
