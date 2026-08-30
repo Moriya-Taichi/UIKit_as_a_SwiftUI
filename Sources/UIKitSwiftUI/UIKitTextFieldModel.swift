@@ -42,7 +42,9 @@ public final class UIKitTextFieldModel {
 
     /// The stream of delegate notifications for this model.
     ///
-    /// The stream is single-consumer: iterate it from one task only.
+    /// The stream is single-consumer: iterate it from one task only. It
+    /// buffers at most the newest 64 unconsumed events and drops the oldest
+    /// beyond that, so subscribe before the events matter.
     public let events: AsyncStream<Event>
 
     @ObservationIgnored
@@ -61,7 +63,10 @@ public final class UIKitTextFieldModel {
         isFocused = false
         isEditing = false
         self.decider = decider
-        let (stream, continuation) = AsyncStream.makeStream(of: Event.self)
+        let (stream, continuation) = AsyncStream.makeStream(
+            of: Event.self,
+            bufferingPolicy: .bufferingNewest(64)
+        )
         events = stream
         eventContinuation = continuation
     }
