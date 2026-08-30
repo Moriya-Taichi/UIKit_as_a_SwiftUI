@@ -14,6 +14,11 @@ View controllers use ``UIKitViewController`` or
 ``UIKitCoordinatedViewController`` so UIKit containment and appearance
 callbacks remain correct.
 
+The package deploys to iOS 16 and Mac Catalyst 16. Every bridge and catalog
+factory is available from that target except
+`UIKitViewCatalog.contentUnavailableView`, which wraps an iOS 17 view and is
+marked `@available(iOS 17.0, macCatalyst 17.0, *)`.
+
 ## Topics
 
 ### Universal bridges
