@@ -6,10 +6,13 @@ import XCTest
 @available(iOS 17.0, macCatalyst 17.0, *)
 private typealias StringListModel = UIKitListModel<Int, String>
 
-@available(iOS 17.0, macCatalyst 17.0, *)
 @MainActor
 final class ListModelTests: XCTestCase {
-    func testSingleSectionConvenienceBuildsOneSection() {
+    func testSingleSectionConvenienceBuildsOneSection() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = StringListModel(items: ["a", "b"])
 
         XCTAssertEqual(model.items, ["a", "b"])
@@ -19,7 +22,11 @@ final class ListModelTests: XCTestCase {
         XCTAssertTrue(model.selectedItems.isEmpty)
     }
 
-    func testItemsSetterReplacesSections() {
+    func testItemsSetterReplacesSections() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = StringListModel(
             sections: [
                 StringListModel.Section(id: 3, items: ["a"]),
@@ -36,14 +43,22 @@ final class ListModelTests: XCTestCase {
         XCTAssertEqual(model.items, ["c", "d"])
     }
 
-    func testItemsGetterIsEmptyWithoutSections() {
+    func testItemsGetterIsEmptyWithoutSections() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = StringListModel(sections: [])
 
         XCTAssertTrue(model.items.isEmpty)
         XCTAssertTrue(model.snapshot().sectionIdentifiers.isEmpty)
     }
 
-    func testSnapshotKeepsSectionAndItemOrder() {
+    func testSnapshotKeepsSectionAndItemOrder() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = StringListModel(
             sections: [
                 StringListModel.Section(id: 0, items: ["a", "b"]),
@@ -59,7 +74,11 @@ final class ListModelTests: XCTestCase {
         XCTAssertEqual(snapshot.itemIdentifiers(inSection: 1), ["c"])
     }
 
-    func testHandleSelectedUpdatesSelectionAndEmitsEvent() async {
+    func testHandleSelectedUpdatesSelectionAndEmitsEvent() async throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = StringListModel(items: ["a", "b"])
         var iterator = model.events.makeAsyncIterator()
 
@@ -70,7 +89,11 @@ final class ListModelTests: XCTestCase {
         XCTAssertEqual(event, .selected("a"))
     }
 
-    func testHandleSelectedKeepsSelectionUnique() {
+    func testHandleSelectedKeepsSelectionUnique() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = StringListModel(items: ["a", "b"])
 
         model.handleSelected("a")
@@ -80,7 +103,11 @@ final class ListModelTests: XCTestCase {
         XCTAssertEqual(model.selectedItems, ["a", "b"])
     }
 
-    func testHandleDeselectedRemovesSelectionAndEmitsEvent() async {
+    func testHandleDeselectedRemovesSelectionAndEmitsEvent() async throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = StringListModel(items: ["a", "b"])
         var iterator = model.events.makeAsyncIterator()
 
@@ -94,7 +121,11 @@ final class ListModelTests: XCTestCase {
         XCTAssertEqual(deselected, .deselected("a"))
     }
 
-    func testTableViewBridgesPinGenericTypes() {
+    func testTableViewBridgesPinGenericTypes() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = StringListModel(items: ["a"])
         let provided = UIKitTableView(
             model: model,
@@ -121,7 +152,11 @@ final class ListModelTests: XCTestCase {
         )
     }
 
-    func testCollectionViewBridgesPinGenericTypes() {
+    func testCollectionViewBridgesPinGenericTypes() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = StringListModel(items: ["a"])
         let typed = UIKitCollectionView(
             model: model,
@@ -147,7 +182,11 @@ final class ListModelTests: XCTestCase {
         )
     }
 
-    func testBridgeCoordinatorsForwardSelectionToModel() {
+    func testBridgeCoordinatorsForwardSelectionToModel() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = StringListModel(items: ["a"])
         let table = UIKitTableView(
             model: model,
@@ -184,7 +223,11 @@ final class ListModelTests: XCTestCase {
         XCTAssertTrue(model.selectedItems.isEmpty)
     }
 
-    func testUpdateSnapshotReconfiguresPersistingItems() {
+    func testUpdateSnapshotReconfiguresPersistingItems() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         var current = NSDiffableDataSourceSnapshot<Int, String>()
         current.appendSections([0])
         current.appendItems(["a", "b", "c"], toSection: 0)
@@ -201,7 +244,11 @@ final class ListModelTests: XCTestCase {
         XCTAssertEqual(result.itemIdentifiers, ["b", "c", "d"])
     }
 
-    func testUpdateSnapshotReconfiguresEveryItemOfAnUnchangedSnapshot() {
+    func testUpdateSnapshotReconfiguresEveryItemOfAnUnchangedSnapshot() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         var current = NSDiffableDataSourceSnapshot<Int, String>()
         current.appendSections([0])
         current.appendItems(["a", "b"], toSection: 0)
@@ -218,7 +265,11 @@ final class ListModelTests: XCTestCase {
         XCTAssertEqual(result.itemIdentifiers, ["a", "b"])
     }
 
-    func testUpdateSnapshotReconfiguresNothingWhenNoItemPersists() {
+    func testUpdateSnapshotReconfiguresNothingWhenNoItemPersists() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         var current = NSDiffableDataSourceSnapshot<Int, String>()
         current.appendSections([0])
         current.appendItems(["a", "b"], toSection: 0)
@@ -237,7 +288,11 @@ final class ListModelTests: XCTestCase {
 
     // The models buffer the newest 64 unconsumed events, so a 65th yield
     // drops the oldest one and the first element received is the second.
-    func testEventStreamKeepsOnlyTheNewestBufferedEvents() async {
+    func testEventStreamKeepsOnlyTheNewestBufferedEvents() async throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitTextFieldModel()
         var iterator = model.events.makeAsyncIterator()
 

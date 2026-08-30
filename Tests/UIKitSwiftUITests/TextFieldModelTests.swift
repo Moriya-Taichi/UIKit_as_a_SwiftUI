@@ -17,10 +17,13 @@ private final class SubmitRecorder {
     var didSubmit = false
 }
 
-@available(iOS 17.0, macCatalyst 17.0, *)
 @MainActor
 final class TextFieldModelTests: XCTestCase {
-    func testModelWithoutDeciderAllowsEveryDecision() {
+    func testModelWithoutDeciderAllowsEveryDecision() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitTextFieldModel()
         let textField = UITextField()
 
@@ -37,7 +40,11 @@ final class TextFieldModelTests: XCTestCase {
         XCTAssertTrue(model.shouldReturn(textField))
     }
 
-    func testDefaultDeciderImplementationsAllowEveryDecision() {
+    func testDefaultDeciderImplementationsAllowEveryDecision() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitTextFieldModel(decider: PermissiveDecider())
         let textField = UITextField()
 
@@ -47,7 +54,11 @@ final class TextFieldModelTests: XCTestCase {
         XCTAssertTrue(model.shouldReturn(textField))
     }
 
-    func testCustomDeciderIsConsulted() {
+    func testCustomDeciderIsConsulted() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitTextFieldModel(decider: StrictDecider())
         let textField = UITextField()
 
@@ -57,7 +68,11 @@ final class TextFieldModelTests: XCTestCase {
         XCTAssertTrue(model.shouldEndEditing(textField))
     }
 
-    func testHandleTextChangedUpdatesTextAndEmitsEvent() async {
+    func testHandleTextChangedUpdatesTextAndEmitsEvent() async throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitTextFieldModel(text: "Old")
         var iterator = model.events.makeAsyncIterator()
 
@@ -68,7 +83,11 @@ final class TextFieldModelTests: XCTestCase {
         XCTAssertEqual(event, .textChanged("New"))
     }
 
-    func testHandleClearedEmptiesTextAndEmitsEvent() async {
+    func testHandleClearedEmptiesTextAndEmitsEvent() async throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitTextFieldModel(text: "Old")
         var iterator = model.events.makeAsyncIterator()
 
@@ -79,7 +98,11 @@ final class TextFieldModelTests: XCTestCase {
         XCTAssertEqual(event, .cleared)
     }
 
-    func testHandleSubmittedEmitsEvent() async {
+    func testHandleSubmittedEmitsEvent() async throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitTextFieldModel()
         var iterator = model.events.makeAsyncIterator()
 
@@ -89,7 +112,11 @@ final class TextFieldModelTests: XCTestCase {
         XCTAssertEqual(event, .submitted)
     }
 
-    func testEditingHandlersFlipEditingAndFocus() {
+    func testEditingHandlersFlipEditingAndFocus() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitTextFieldModel()
 
         model.handleEditingBegan()
@@ -103,7 +130,11 @@ final class TextFieldModelTests: XCTestCase {
         XCTAssertFalse(model.isFocused)
     }
 
-    func testEditingHandlersEmitEditingEvents() async {
+    func testEditingHandlersEmitEditingEvents() async throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitTextFieldModel()
         var iterator = model.events.makeAsyncIterator()
 
@@ -116,7 +147,11 @@ final class TextFieldModelTests: XCTestCase {
         XCTAssertEqual(ended, .editingEnded)
     }
 
-    func testTextFieldAcceptsObservableModel() {
+    func testTextFieldAcceptsObservableModel() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitTextFieldModel(text: "Value")
 
         let textField = UIKitTextField("Placeholder", model: model)
@@ -124,7 +159,11 @@ final class TextFieldModelTests: XCTestCase {
         XCTAssertTrue(type(of: textField) == UIKitTextField.self)
     }
 
-    func testCoordinatorForwardsDelegateCallbacksToModel() {
+    func testCoordinatorForwardsDelegateCallbacksToModel() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitTextFieldModel(decider: StrictDecider())
         let bridge = UIKitTextField(model: model)
         let coordinator = bridge.makeCoordinator()
@@ -144,7 +183,11 @@ final class TextFieldModelTests: XCTestCase {
         XCTAssertFalse(model.isFocused)
     }
 
-    func testCoordinatorWithoutModelKeepsClosureBehavior() {
+    func testCoordinatorWithoutModelKeepsClosureBehavior() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let recorder = SubmitRecorder()
         let bridge = UIKitTextField(
             text: .constant("Value"),

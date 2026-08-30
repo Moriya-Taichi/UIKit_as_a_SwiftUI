@@ -37,12 +37,15 @@ private final class CallbackRecorder {
     var didCancel = false
 }
 
-@available(iOS 17.0, macCatalyst 17.0, *)
 @MainActor
 final class TextInputModelTests: XCTestCase {
     // MARK: - Text view model
 
-    func testTextViewModelWithoutDeciderAllowsEveryDecision() {
+    func testTextViewModelWithoutDeciderAllowsEveryDecision() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitTextViewModel()
         let textView = UITextView()
 
@@ -57,7 +60,11 @@ final class TextInputModelTests: XCTestCase {
         )
     }
 
-    func testTextViewDefaultDeciderImplementationsAllowEveryDecision() {
+    func testTextViewDefaultDeciderImplementationsAllowEveryDecision() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitTextViewModel(decider: PermissiveTextViewDecider())
         let textView = UITextView()
 
@@ -72,7 +79,11 @@ final class TextInputModelTests: XCTestCase {
         )
     }
 
-    func testTextViewCustomDeciderIsConsulted() {
+    func testTextViewCustomDeciderIsConsulted() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitTextViewModel(decider: StrictTextViewDecider())
         let textView = UITextView()
 
@@ -87,7 +98,11 @@ final class TextInputModelTests: XCTestCase {
         )
     }
 
-    func testTextViewHandleTextChangedUpdatesTextAndEmitsEvent() async {
+    func testTextViewHandleTextChangedUpdatesTextAndEmitsEvent() async throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitTextViewModel(text: "Old")
         var iterator = model.events.makeAsyncIterator()
 
@@ -98,7 +113,11 @@ final class TextInputModelTests: XCTestCase {
         XCTAssertEqual(event, .textChanged("New"))
     }
 
-    func testTextViewHandleSelectionChangedEmitsEvent() async {
+    func testTextViewHandleSelectionChangedEmitsEvent() async throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitTextViewModel(text: "Value")
         var iterator = model.events.makeAsyncIterator()
         let range = NSRange(location: 1, length: 3)
@@ -109,7 +128,11 @@ final class TextInputModelTests: XCTestCase {
         XCTAssertEqual(event, .selectionChanged(range))
     }
 
-    func testTextViewEditingHandlersFlipEditingAndFocus() {
+    func testTextViewEditingHandlersFlipEditingAndFocus() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitTextViewModel()
 
         model.handleEditingBegan()
@@ -123,7 +146,11 @@ final class TextInputModelTests: XCTestCase {
         XCTAssertFalse(model.isFocused)
     }
 
-    func testTextViewEditingHandlersEmitEditingEvents() async {
+    func testTextViewEditingHandlersEmitEditingEvents() async throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitTextViewModel()
         var iterator = model.events.makeAsyncIterator()
 
@@ -136,7 +163,11 @@ final class TextInputModelTests: XCTestCase {
         XCTAssertEqual(ended, .editingEnded)
     }
 
-    func testTextViewAcceptsObservableModel() {
+    func testTextViewAcceptsObservableModel() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitTextViewModel(text: "Value")
 
         let textView = UIKitTextView(model: model)
@@ -144,7 +175,11 @@ final class TextInputModelTests: XCTestCase {
         XCTAssertTrue(type(of: textView) == UIKitTextView.self)
     }
 
-    func testTextViewCoordinatorForwardsDelegateCallbacksToModel() async {
+    func testTextViewCoordinatorForwardsDelegateCallbacksToModel() async throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitTextViewModel(decider: StrictTextViewDecider())
         let bridge = UIKitTextView(model: model)
         let coordinator = bridge.makeCoordinator()
@@ -186,7 +221,11 @@ final class TextInputModelTests: XCTestCase {
         XCTAssertEqual(ended, .editingEnded)
     }
 
-    func testTextViewCoordinatorWithoutModelKeepsClosureBehavior() {
+    func testTextViewCoordinatorWithoutModelKeepsClosureBehavior() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let recorder = CallbackRecorder()
         let bridge = UIKitTextView(
             text: .constant("Value"),
@@ -213,7 +252,11 @@ final class TextInputModelTests: XCTestCase {
 
     // MARK: - Search bar model
 
-    func testSearchBarModelWithoutDeciderAllowsEveryDecision() {
+    func testSearchBarModelWithoutDeciderAllowsEveryDecision() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitSearchBarModel()
         let searchBar = UISearchBar()
 
@@ -228,7 +271,11 @@ final class TextInputModelTests: XCTestCase {
         )
     }
 
-    func testSearchBarDefaultDeciderImplementationsAllowEveryDecision() {
+    func testSearchBarDefaultDeciderImplementationsAllowEveryDecision() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitSearchBarModel(decider: PermissiveSearchBarDecider())
         let searchBar = UISearchBar()
 
@@ -243,7 +290,11 @@ final class TextInputModelTests: XCTestCase {
         )
     }
 
-    func testSearchBarCustomDeciderIsConsulted() {
+    func testSearchBarCustomDeciderIsConsulted() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitSearchBarModel(decider: StrictSearchBarDecider())
         let searchBar = UISearchBar()
 
@@ -258,7 +309,11 @@ final class TextInputModelTests: XCTestCase {
         )
     }
 
-    func testSearchBarHandleTextChangedUpdatesTextAndEmitsEvent() async {
+    func testSearchBarHandleTextChangedUpdatesTextAndEmitsEvent() async throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitSearchBarModel(text: "Old")
         var iterator = model.events.makeAsyncIterator()
 
@@ -269,7 +324,11 @@ final class TextInputModelTests: XCTestCase {
         XCTAssertEqual(event, .textChanged("New"))
     }
 
-    func testSearchBarHandleSubmittedEmitsEvent() async {
+    func testSearchBarHandleSubmittedEmitsEvent() async throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitSearchBarModel(text: "Query")
         var iterator = model.events.makeAsyncIterator()
 
@@ -279,7 +338,11 @@ final class TextInputModelTests: XCTestCase {
         XCTAssertEqual(event, .submitted)
     }
 
-    func testSearchBarHandleCancelledKeepsTextAndEmitsEvent() async {
+    func testSearchBarHandleCancelledKeepsTextAndEmitsEvent() async throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitSearchBarModel(text: "Query")
         var iterator = model.events.makeAsyncIterator()
 
@@ -290,7 +353,11 @@ final class TextInputModelTests: XCTestCase {
         XCTAssertEqual(event, .cancelled)
     }
 
-    func testSearchBarEditingHandlersFlipEditingAndFocus() {
+    func testSearchBarEditingHandlersFlipEditingAndFocus() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitSearchBarModel()
 
         model.handleEditingBegan()
@@ -304,7 +371,11 @@ final class TextInputModelTests: XCTestCase {
         XCTAssertFalse(model.isFocused)
     }
 
-    func testSearchBarAcceptsObservableModel() {
+    func testSearchBarAcceptsObservableModel() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitSearchBarModel(text: "Query")
 
         let searchBar = UIKitSearchBar(model: model, prompt: "Search")
@@ -312,7 +383,11 @@ final class TextInputModelTests: XCTestCase {
         XCTAssertTrue(type(of: searchBar) == UIKitSearchBar.self)
     }
 
-    func testSearchBarCoordinatorForwardsDelegateCallbacksToModel() async {
+    func testSearchBarCoordinatorForwardsDelegateCallbacksToModel() async throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let model = UIKitSearchBarModel(decider: StrictSearchBarDecider())
         let bridge = UIKitSearchBar(model: model)
         let coordinator = bridge.makeCoordinator()
@@ -356,7 +431,11 @@ final class TextInputModelTests: XCTestCase {
         XCTAssertEqual(ended, .editingEnded)
     }
 
-    func testSearchBarCoordinatorWithoutModelKeepsClosureBehavior() {
+    func testSearchBarCoordinatorWithoutModelKeepsClosureBehavior() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
         let recorder = CallbackRecorder()
         let bridge = UIKitSearchBar(
             text: .constant("Value"),
