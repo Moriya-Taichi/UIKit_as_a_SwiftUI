@@ -49,3 +49,26 @@ jobs:
           -scheme UIKitSwiftUI
           -destination 'platform=iOS Simulator,name=${{ matrix.simulator }},OS=latest'
           CODE_SIGNING_ALLOWED=NO
+
+  test-ios16:
+    name: Xcode 16 / iOS 16 simulator
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app
+      - name: Print toolchain
+        run: xcodebuild -version
+      - name: Install iOS 16.4 simulator runtime
+        run: |
+          command -v xcodes >/dev/null || brew install xcodesorg/made/xcodes
+          sudo xcodes runtimes install 'iOS 16.4'
+      - name: Create iOS 16 simulator
+        run: xcrun simctl create 'iPhone-14-iOS-16-4' 'iPhone 14' 'iOS16.4'
+      - name: Test on iOS 16 Simulator
+        run: >-
+          xcodebuild test
+          -scheme UIKitSwiftUI
+          -destination 'platform=iOS Simulator,name=iPhone-14-iOS-16-4,OS=16.4'
+          CODE_SIGNING_ALLOWED=NO

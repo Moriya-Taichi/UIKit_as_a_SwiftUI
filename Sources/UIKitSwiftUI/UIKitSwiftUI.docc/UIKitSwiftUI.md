@@ -20,6 +20,11 @@ policy decisions; the bridge only displays it. Delegate notifications arrive
 through the model's `events` stream, and table and collection data comes from
 ``UIKitListModel``, so callers never implement a UIKit data source.
 
+The package deploys to iOS 16 and Mac Catalyst 16. Every bridge and catalog
+factory is available from that target except
+`UIKitViewCatalog.contentUnavailableView`, which wraps an iOS 17 view and is
+marked `@available(iOS 17.0, macCatalyst 17.0, *)`.
+
 ## Topics
 
 ### Universal bridges

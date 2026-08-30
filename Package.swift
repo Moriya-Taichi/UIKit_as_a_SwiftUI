@@ -5,8 +5,8 @@ import PackageDescription
 let package = Package(
     name: "UIKitSwiftUI",
     platforms: [
-        .iOS(.v18),
-        .macCatalyst(.v18),
+        .iOS(.v16),
+        .macCatalyst(.v16),
     ],
     products: [
         .library(

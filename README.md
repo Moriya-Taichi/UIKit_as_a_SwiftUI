@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/Moriya-Taichi/UIKit_as_a_SwiftUI/actions/workflows/ci.yml/badge.svg)](https://github.com/Moriya-Taichi/UIKit_as_a_SwiftUI/actions/workflows/ci.yml)
 
-UIKitの任意のビューを、具体型を消さずにSwiftUIへ組み込むためのSwift Packageです。iOS 18を最小対象とし、Xcode 16のiOS 18 SDKとXcode 27のiOS 27 SDKで継続的にビルドします。
+UIKitの任意のビューを、具体型を消さずにSwiftUIへ組み込むためのSwift Packageです。iOS 16を最小対象とし、Xcode 16のiOS 18 SDKとXcode 27のiOS 27 SDKで継続的にビルドします。iOS 16.4シミュレータでのテストも実行します。
 
 ## 対応範囲
 
@@ -27,7 +27,7 @@ UIKitの任意のビューを、具体型を消さずにSwiftUIへ組み込む�
 
 ## 必要環境
 
-- iOS 18以降、またはMac Catalyst 18以降
+- iOS 16以降、またはMac Catalyst 16以降
 - Swift 6 / Xcode 16以降
 - iOS 27固有APIを使う場合はXcode 27
 
@@ -220,6 +220,22 @@ struct FruitList: View {
 ## 初期化が特殊なビュー
 
 `UIKitViewCatalog`には、collection view、table view、calendar view、visual effect view、各種barなどの型付きfactoryがあります。catalogにないビューも`UIKitView(make:update:)`で同じように扱えます。
+
+`UIKitViewCatalog.contentUnavailableView`はiOS 17以降が必要なため、`@available`や`if #available`のガード下で使用してください。
+
+```swift
+struct EmptyResults: View {
+    var body: some View {
+        if #available(iOS 17.0, macCatalyst 17.0, *) {
+            UIKitViewCatalog.contentUnavailableView(
+                configuration: .search()
+            )
+        } else {
+            Text("No Results")
+        }
+    }
+}
+```
 
 ```swift
 UIKitViewCatalog.collectionView {

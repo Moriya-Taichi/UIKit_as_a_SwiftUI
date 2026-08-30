@@ -163,6 +163,7 @@ public extension UIKitViewCatalog {
         )
     }
 
+    @available(iOS 17.0, macCatalyst 17.0, *)
     @MainActor
     static func contentUnavailableView(
         configuration: UIContentUnavailableConfiguration,
