@@ -138,6 +138,20 @@ struct Controls: View {
 `UIKitViewCatalog.contentUnavailableView`はiOS 17以降が必要なため、`@available`や`if #available`のガード下で使用してください。
 
 ```swift
+struct EmptyResults: View {
+    var body: some View {
+        if #available(iOS 17.0, macCatalyst 17.0, *) {
+            UIKitViewCatalog.contentUnavailableView(
+                configuration: .search()
+            )
+        } else {
+            Text("No Results")
+        }
+    }
+}
+```
+
+```swift
 UIKitViewCatalog.collectionView {
     UICollectionViewCompositionalLayout { _, _ in
         // sectionを返す
