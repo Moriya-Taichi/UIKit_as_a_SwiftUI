@@ -14,6 +14,12 @@ View controllers use ``UIKitViewController`` or
 ``UIKitCoordinatedViewController`` so UIKit containment and appearance
 callbacks remain correct.
 
+Interactive views can instead be driven by observable models, in the style of
+WebKit's SwiftUI `WebPage`. The model owns the data, focus, selection, and
+policy decisions; the bridge only displays it. Delegate notifications arrive
+through the model's `events` stream, and table and collection data comes from
+``UIKitListModel``, so callers never implement a UIKit data source.
+
 ## Topics
 
 ### Universal bridges
@@ -38,6 +44,21 @@ callbacks remain correct.
 - ``UIKitTextField``
 - ``UIKitTextView``
 - ``UIKitSearchBar``
+
+### Observable models
+
+- ``UIKitTextFieldModel``
+- ``UIKitTextViewModel``
+- ``UIKitSearchBarModel``
+- ``UIKitListModel``
+- ``UIKitTableView``
+- ``UIKitCollectionView``
+
+### Policy deciders
+
+- ``UIKitTextFieldDeciding``
+- ``UIKitTextViewDeciding``
+- ``UIKitSearchBarDeciding``
 
 ### Configuration
 
