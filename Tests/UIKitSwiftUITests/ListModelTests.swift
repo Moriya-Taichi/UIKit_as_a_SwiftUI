@@ -183,4 +183,69 @@ final class ListModelTests: XCTestCase {
 
         XCTAssertTrue(model.selectedItems.isEmpty)
     }
+
+    func testUpdateSnapshotReconfiguresPersistingItems() {
+        var current = NSDiffableDataSourceSnapshot<Int, String>()
+        current.appendSections([0])
+        current.appendItems(["a", "b", "c"], toSection: 0)
+        var updated = NSDiffableDataSourceSnapshot<Int, String>()
+        updated.appendSections([0])
+        updated.appendItems(["b", "c", "d"], toSection: 0)
+
+        let result = UIKitTableView<Int, String>.updateSnapshot(
+            current: current,
+            updated: updated
+        )
+
+        XCTAssertEqual(result.reconfiguredItemIdentifiers, ["b", "c"])
+        XCTAssertEqual(result.itemIdentifiers, ["b", "c", "d"])
+    }
+
+    func testUpdateSnapshotReconfiguresEveryItemOfAnUnchangedSnapshot() {
+        var current = NSDiffableDataSourceSnapshot<Int, String>()
+        current.appendSections([0])
+        current.appendItems(["a", "b"], toSection: 0)
+        var updated = NSDiffableDataSourceSnapshot<Int, String>()
+        updated.appendSections([0])
+        updated.appendItems(["a", "b"], toSection: 0)
+
+        let result = UIKitTableView<Int, String>.updateSnapshot(
+            current: current,
+            updated: updated
+        )
+
+        XCTAssertEqual(result.reconfiguredItemIdentifiers, ["a", "b"])
+        XCTAssertEqual(result.itemIdentifiers, ["a", "b"])
+    }
+
+    func testUpdateSnapshotReconfiguresNothingWhenNoItemPersists() {
+        var current = NSDiffableDataSourceSnapshot<Int, String>()
+        current.appendSections([0])
+        current.appendItems(["a", "b"], toSection: 0)
+        var updated = NSDiffableDataSourceSnapshot<Int, String>()
+        updated.appendSections([0])
+        updated.appendItems(["c", "d"], toSection: 0)
+
+        let result = UIKitTableView<Int, String>.updateSnapshot(
+            current: current,
+            updated: updated
+        )
+
+        XCTAssertTrue(result.reconfiguredItemIdentifiers.isEmpty)
+        XCTAssertEqual(result.itemIdentifiers, ["c", "d"])
+    }
+
+    // The models buffer the newest 64 unconsumed events, so a 65th yield
+    // drops the oldest one and the first element received is the second.
+    func testEventStreamKeepsOnlyTheNewestBufferedEvents() async {
+        let model = UIKitTextFieldModel()
+        var iterator = model.events.makeAsyncIterator()
+
+        for value in 0...64 {
+            model.handleTextChanged("\(value)")
+        }
+
+        let event = await iterator.next()
+        XCTAssertEqual(event, .textChanged("1"))
+    }
 }
