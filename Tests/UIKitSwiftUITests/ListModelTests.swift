@@ -3,8 +3,10 @@ import UIKit
 import XCTest
 @testable import UIKitSwiftUI
 
+@available(iOS 17.0, macCatalyst 17.0, *)
 private typealias StringListModel = UIKitListModel<Int, String>
 
+@available(iOS 17.0, macCatalyst 17.0, *)
 @MainActor
 final class ListModelTests: XCTestCase {
     func testSingleSectionConvenienceBuildsOneSection() {

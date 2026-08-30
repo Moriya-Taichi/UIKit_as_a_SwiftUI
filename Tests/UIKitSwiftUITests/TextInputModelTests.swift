@@ -3,8 +3,10 @@ import UIKit
 import XCTest
 @testable import UIKitSwiftUI
 
+@available(iOS 17.0, macCatalyst 17.0, *)
 private struct PermissiveTextViewDecider: UIKitTextViewDeciding {}
 
+@available(iOS 17.0, macCatalyst 17.0, *)
 private struct StrictTextViewDecider: UIKitTextViewDeciding {
     func shouldEndEditing(_ textView: UITextView) -> Bool { false }
 
@@ -15,8 +17,10 @@ private struct StrictTextViewDecider: UIKitTextViewDeciding {
     ) -> Bool { false }
 }
 
+@available(iOS 17.0, macCatalyst 17.0, *)
 private struct PermissiveSearchBarDecider: UIKitSearchBarDeciding {}
 
+@available(iOS 17.0, macCatalyst 17.0, *)
 private struct StrictSearchBarDecider: UIKitSearchBarDeciding {
     func shouldBeginEditing(_ searchBar: UISearchBar) -> Bool { false }
 
@@ -33,6 +37,7 @@ private final class CallbackRecorder {
     var didCancel = false
 }
 
+@available(iOS 17.0, macCatalyst 17.0, *)
 @MainActor
 final class TextInputModelTests: XCTestCase {
     // MARK: - Text view model

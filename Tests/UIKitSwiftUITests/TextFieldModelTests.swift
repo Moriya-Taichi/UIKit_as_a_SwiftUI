@@ -3,8 +3,10 @@ import UIKit
 import XCTest
 @testable import UIKitSwiftUI
 
+@available(iOS 17.0, macCatalyst 17.0, *)
 private struct PermissiveDecider: UIKitTextFieldDeciding {}
 
+@available(iOS 17.0, macCatalyst 17.0, *)
 private struct StrictDecider: UIKitTextFieldDeciding {
     func shouldReturn(_ textField: UITextField) -> Bool { false }
 
@@ -15,6 +17,7 @@ private final class SubmitRecorder {
     var didSubmit = false
 }
 
+@available(iOS 17.0, macCatalyst 17.0, *)
 @MainActor
 final class TextFieldModelTests: XCTestCase {
     func testModelWithoutDeciderAllowsEveryDecision() {
