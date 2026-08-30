@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app
+      - name: Build for iOS Simulator
+        run: >-
+          xcodebuild build
+          -scheme UIKitSwiftUI
+          -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO
+      - name: Build for Mac Catalyst
+        run: >-
+          xcodebuild build
+          -scheme UIKitSwiftUI
+          -destination 'generic/platform=macOS,variant=Mac Catalyst'
+          CODE_SIGNING_ALLOWED=NO
+
