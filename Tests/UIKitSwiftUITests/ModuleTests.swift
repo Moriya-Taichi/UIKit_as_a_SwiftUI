@@ -77,4 +77,24 @@ final class ModuleTests: XCTestCase {
             type(of: bridge) == UIKitControl<CustomControl>.self
         )
     }
+
+    func testBoundControlsExposeSwiftUIViews() {
+        let slider = UIKitSlider(value: .constant(0.5))
+        let toggle = UIKitSwitch(isOn: .constant(true))
+        let stepper = UIKitStepper(value: .constant(2))
+        let pages = UIKitPageControl(
+            currentPage: .constant(1),
+            numberOfPages: 3
+        )
+        let segments = UIKitSegmentedControl(
+            ["First", "Second"],
+            selection: .constant(0)
+        )
+
+        XCTAssertNotNil(type(of: slider))
+        XCTAssertNotNil(type(of: toggle))
+        XCTAssertNotNil(type(of: stepper))
+        XCTAssertNotNil(type(of: pages))
+        XCTAssertNotNil(type(of: segments))
+    }
 }
