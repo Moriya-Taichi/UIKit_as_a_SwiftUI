@@ -71,15 +71,22 @@ instance. An instance created with `model:` ignores the binding parameters and
 routes every delegate callback through the model; an instance created with
 bindings never touches a model.
 
+The whole layer is built on `@Observable`, so the model types, the `*Deciding`
+protocols, `UIKitTableView`, `UIKitCollectionView`, and the `init(model:)` of
+each text bridge are marked `@available(iOS 17.0, macCatalyst 17.0, *)`. The
+package minimum stays iOS 16, and the binding mode of every bridge remains
+available from that target: the bridges hold the model in a type-erased stored
+property and read it only behind an availability check.
+
 ## SDK compatibility
 
 The package deployment target is iOS 16 and Mac Catalyst 16. The generic
 bridges do not switch on OS version and do not reflect over SDK symbols. A
 client may instantiate any view visible in the SDK it compiles against and use
-normal `@available` checks for SDK-specific types. The only SDK-gated API in
-the package is `UIKitViewCatalog.contentUnavailableView`, marked
-`@available(iOS 17.0, macCatalyst 17.0, *)`; everything else compiles for
-iOS 16.
+normal `@available` checks for SDK-specific types. The gated API in the
+package is `UIKitViewCatalog.contentUnavailableView` and the observable-model
+layer, both marked `@available(iOS 17.0, macCatalyst 17.0, *)`; everything
+else compiles for iOS 16.
 
 CI builds the same source with both ends of the supported SDK range and runs
 the tests on the minimum deployment target:

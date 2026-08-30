@@ -18,12 +18,15 @@ Interactive views can instead be driven by observable models, in the style of
 WebKit's SwiftUI `WebPage`. The model owns the data, focus, selection, and
 policy decisions; the bridge only displays it. Delegate notifications arrive
 through the model's `events` stream, and table and collection data comes from
-``UIKitListModel``, so callers never implement a UIKit data source.
+``UIKitListModel``, so callers never implement a UIKit data source. That layer
+builds on `@Observable` and requires iOS 17.
 
 The package deploys to iOS 16 and Mac Catalyst 16. Every bridge and catalog
 factory is available from that target except
-`UIKitViewCatalog.contentUnavailableView`, which wraps an iOS 17 view and is
-marked `@available(iOS 17.0, macCatalyst 17.0, *)`.
+`UIKitViewCatalog.contentUnavailableView`, which wraps an iOS 17 view, and the
+observable-model layer — the `*Model` types, the `*Deciding` protocols,
+``UIKitTableView``, ``UIKitCollectionView``, and each bridge's `init(model:)`
+— which are all marked `@available(iOS 17.0, macCatalyst 17.0, *)`.
 
 ## Topics
 

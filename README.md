@@ -28,6 +28,7 @@ UIKitの任意のビューを、具体型を消さずにSwiftUIへ組み込む�
 ## 必要環境
 
 - iOS 16以降、またはMac Catalyst 16以降
+- Observableモデル層（`*Model`、`*Deciding`、`UIKitTableView`、`UIKitCollectionView`）はiOS 17以降。それ以外はiOS 16から使えます
 - Swift 6 / Xcode 16以降
 - iOS 27固有APIを使う場合はXcode 27
 
@@ -137,6 +138,8 @@ struct Controls: View {
 独自の`UIControl`には`UIKitControl`を使います。`UIAction`は一度だけ登録され、SwiftUIの更新時に重複せず、dismantle時に解除されます。
 
 ## Observableモデルで使う
+
+このモデル層（`*Model`、`*Deciding`、`UIKitTableView`、`UIKitCollectionView`、および各ブリッジの`init(model:)`）は`@Observable`を使うためiOS 17以降が必要です。パッケージの最小対象はiOS 16のままで、それ以外のAPIはiOS 16から使えるので、以下の例は`@available`や`if #available`のガード下で利用してください。
 
 WebKitのSwiftUI版`WebPage`と同じ発想で、`@Observable`なモデルがデータとポリシーを所有し、ビューは表示に徹します。テキスト、フォーカス、選択状態、そして「許可するかどうか」の判断はモデル側にあり、ブリッジはモデルとUIKitインスタンスを同期するだけです。
 
