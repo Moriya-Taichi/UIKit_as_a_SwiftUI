@@ -13,9 +13,16 @@ public struct UIKitTextView: UIViewRepresentable {
 
     private let text: Binding<String>
     private let isFocused: Binding<Bool>?
-    private let model: UIKitTextViewModel?
+    // stored property becomes type-erased — a stored property cannot have a
+    // less-available type than its enclosing struct
+    private let modelStorage: AnyObject?
     private let configure: @MainActor (UITextView) -> Void
     private let onEditingChanged: @MainActor (Bool) -> Void
+
+    @available(iOS 17.0, macCatalyst 17.0, *)
+    private var model: UIKitTextViewModel? {
+        modelStorage as? UIKitTextViewModel
+    }
 
     /// Creates a text view driven by bindings and closures.
     public init(
@@ -26,7 +33,7 @@ public struct UIKitTextView: UIViewRepresentable {
     ) {
         self.text = text
         self.isFocused = isFocused
-        model = nil
+        modelStorage = nil
         self.configure = configure
         self.onEditingChanged = onEditingChanged
     }
@@ -35,31 +42,41 @@ public struct UIKitTextView: UIViewRepresentable {
     ///
     /// The model owns the text, the focus, and every policy decision, so the
     /// binding-based parameters of the other initializer do not apply here.
+    ///
+    /// The observable model mode requires iOS 17 or newer.
+    @available(iOS 17.0, macCatalyst 17.0, *)
     public init(
         model: UIKitTextViewModel,
         configure: @escaping @MainActor (UITextView) -> Void = { _ in }
     ) {
         text = .constant("")
         isFocused = nil
-        self.model = model
+        modelStorage = model
         self.configure = configure
         onEditingChanged = { _ in }
     }
 
     @MainActor
     public final class Coordinator: NSObject, UITextViewDelegate {
-        fileprivate var model: UIKitTextViewModel?
+        // stored property becomes type-erased — a stored property cannot have
+        // a less-available type than its enclosing class
+        fileprivate var modelStorage: AnyObject?
         fileprivate var text: Binding<String>
         fileprivate var isFocused: Binding<Bool>?
         fileprivate var onEditingChanged: @MainActor (Bool) -> Void
 
+        @available(iOS 17.0, macCatalyst 17.0, *)
+        fileprivate var model: UIKitTextViewModel? {
+            modelStorage as? UIKitTextViewModel
+        }
+
         fileprivate init(
-            model: UIKitTextViewModel?,
+            modelStorage: AnyObject?,
             text: Binding<String>,
             isFocused: Binding<Bool>?,
             onEditingChanged: @escaping @MainActor (Bool) -> Void
         ) {
-            self.model = model
+            self.modelStorage = modelStorage
             self.text = text
             self.isFocused = isFocused
             self.onEditingChanged = onEditingChanged
@@ -70,15 +87,19 @@ public struct UIKitTextView: UIViewRepresentable {
         public func textViewShouldBeginEditing(
             _ textView: UITextView
         ) -> Bool {
-            guard let model else { return true }
-            return model.shouldBeginEditing(textView)
+            if #available(iOS 17.0, macCatalyst 17.0, *), let model {
+                return model.shouldBeginEditing(textView)
+            }
+            return true
         }
 
         /// Asks the model whether editing may end. Without a model the view
         /// always ends editing.
         public func textViewShouldEndEditing(_ textView: UITextView) -> Bool {
-            guard let model else { return true }
-            return model.shouldEndEditing(textView)
+            if #available(iOS 17.0, macCatalyst 17.0, *), let model {
+                return model.shouldEndEditing(textView)
+            }
+            return true
         }
 
         public func textView(
@@ -86,17 +107,19 @@ public struct UIKitTextView: UIViewRepresentable {
             shouldChangeTextIn range: NSRange,
             replacementText text: String
         ) -> Bool {
-            guard let model else { return true }
-            return model.shouldChangeText(
-                in: range,
-                replacement: text,
-                textView: textView
-            )
+            if #available(iOS 17.0, macCatalyst 17.0, *), let model {
+                return model.shouldChangeText(
+                    in: range,
+                    replacement: text,
+                    textView: textView
+                )
+            }
+            return true
         }
 
         public func textViewDidChange(_ textView: UITextView) {
             let newValue = textView.text ?? ""
-            if let model {
+            if #available(iOS 17.0, macCatalyst 17.0, *), let model {
                 model.handleTextChanged(newValue)
                 return
             }
@@ -108,12 +131,13 @@ public struct UIKitTextView: UIViewRepresentable {
         /// Reports selection changes to the model. The binding mode has no
         /// selection callback, so it ignores them.
         public func textViewDidChangeSelection(_ textView: UITextView) {
-            guard let model else { return }
-            model.handleSelectionChanged(textView.selectedRange)
+            if #available(iOS 17.0, macCatalyst 17.0, *), let model {
+                model.handleSelectionChanged(textView.selectedRange)
+            }
         }
 
         public func textViewDidBeginEditing(_ textView: UITextView) {
-            if let model {
+            if #available(iOS 17.0, macCatalyst 17.0, *), let model {
                 model.handleEditingBegan()
                 return
             }
@@ -124,7 +148,7 @@ public struct UIKitTextView: UIViewRepresentable {
         }
 
         public func textViewDidEndEditing(_ textView: UITextView) {
-            if let model {
+            if #available(iOS 17.0, macCatalyst 17.0, *), let model {
                 model.handleEditingEnded()
                 return
             }
@@ -137,7 +161,7 @@ public struct UIKitTextView: UIViewRepresentable {
 
     public func makeCoordinator() -> Coordinator {
         Coordinator(
-            model: model,
+            modelStorage: modelStorage,
             text: text,
             isFocused: isFocused,
             onEditingChanged: onEditingChanged
@@ -178,26 +202,26 @@ public struct UIKitTextView: UIViewRepresentable {
         _ textView: UITextView,
         coordinator: Coordinator
     ) {
-        coordinator.model = model
+        coordinator.modelStorage = modelStorage
         coordinator.text = text
         coordinator.isFocused = isFocused
         coordinator.onEditingChanged = onEditingChanged
 
+        var currentText = text.wrappedValue
+        var desiredFocus = isFocused?.wrappedValue
         // Reading the model here makes the update depend on its observable
         // state, so SwiftUI re-invokes `updateUIView` when the model changes.
-        let currentText = model?.text ?? text.wrappedValue
+        if #available(iOS 17.0, macCatalyst 17.0, *), let model {
+            currentText = model.text
+            desiredFocus = model.isFocused
+        }
+
         if textView.text != currentText {
             textView.text = currentText
         }
         configure(textView)
         textView.delegate = coordinator
 
-        let desiredFocus: Bool?
-        if let model {
-            desiredFocus = model.isFocused
-        } else {
-            desiredFocus = isFocused?.wrappedValue
-        }
         guard let shouldFocus = desiredFocus else { return }
         if shouldFocus, !textView.isFirstResponder {
             textView.becomeFirstResponder()

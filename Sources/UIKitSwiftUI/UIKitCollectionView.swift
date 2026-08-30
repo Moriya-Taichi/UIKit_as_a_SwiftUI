@@ -10,6 +10,7 @@ import UIKit
 /// how an item configures a cell. The cell registration is created exactly
 /// once per collection view, while the configuration closure is refreshed on
 /// every update so it may capture current SwiftUI state.
+@available(iOS 17.0, macCatalyst 17.0, *)
 @MainActor
 public struct UIKitCollectionView<
     SectionID: Hashable & Sendable,

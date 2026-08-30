@@ -15,10 +15,17 @@ public struct UIKitSearchBar: UIViewRepresentable {
     private let text: Binding<String>
     private let isFocused: Binding<Bool>?
     private let prompt: String?
-    private let model: UIKitSearchBarModel?
+    // stored property becomes type-erased — a stored property cannot have a
+    // less-available type than its enclosing struct
+    private let modelStorage: AnyObject?
     private let configure: @MainActor (UISearchBar) -> Void
     private let onSubmit: @MainActor () -> Void
     private let onCancel: @MainActor () -> Void
+
+    @available(iOS 17.0, macCatalyst 17.0, *)
+    private var model: UIKitSearchBarModel? {
+        modelStorage as? UIKitSearchBarModel
+    }
 
     /// Creates a search bar driven by bindings and closures.
     public init(
@@ -32,7 +39,7 @@ public struct UIKitSearchBar: UIViewRepresentable {
         self.text = text
         self.prompt = prompt
         self.isFocused = isFocused
-        model = nil
+        modelStorage = nil
         self.configure = configure
         self.onSubmit = onSubmit
         self.onCancel = onCancel
@@ -43,6 +50,9 @@ public struct UIKitSearchBar: UIViewRepresentable {
     /// The model owns the query text, the focus, and every policy decision,
     /// so the binding-based parameters of the other initializer do not apply
     /// here.
+    ///
+    /// The observable model mode requires iOS 17 or newer.
+    @available(iOS 17.0, macCatalyst 17.0, *)
     public init(
         model: UIKitSearchBarModel,
         prompt: String? = nil,
@@ -51,7 +61,7 @@ public struct UIKitSearchBar: UIViewRepresentable {
         text = .constant("")
         self.prompt = prompt
         isFocused = nil
-        self.model = model
+        modelStorage = model
         self.configure = configure
         onSubmit = {}
         onCancel = {}
@@ -59,20 +69,27 @@ public struct UIKitSearchBar: UIViewRepresentable {
 
     @MainActor
     public final class Coordinator: NSObject, UISearchBarDelegate {
-        fileprivate var model: UIKitSearchBarModel?
+        // stored property becomes type-erased — a stored property cannot have
+        // a less-available type than its enclosing class
+        fileprivate var modelStorage: AnyObject?
         fileprivate var text: Binding<String>
         fileprivate var isFocused: Binding<Bool>?
         fileprivate var onSubmit: @MainActor () -> Void
         fileprivate var onCancel: @MainActor () -> Void
 
+        @available(iOS 17.0, macCatalyst 17.0, *)
+        fileprivate var model: UIKitSearchBarModel? {
+            modelStorage as? UIKitSearchBarModel
+        }
+
         fileprivate init(
-            model: UIKitSearchBarModel?,
+            modelStorage: AnyObject?,
             text: Binding<String>,
             isFocused: Binding<Bool>?,
             onSubmit: @escaping @MainActor () -> Void,
             onCancel: @escaping @MainActor () -> Void
         ) {
-            self.model = model
+            self.modelStorage = modelStorage
             self.text = text
             self.isFocused = isFocused
             self.onSubmit = onSubmit
@@ -84,8 +101,10 @@ public struct UIKitSearchBar: UIViewRepresentable {
         public func searchBarShouldBeginEditing(
             _ searchBar: UISearchBar
         ) -> Bool {
-            guard let model else { return true }
-            return model.shouldBeginEditing(searchBar)
+            if #available(iOS 17.0, macCatalyst 17.0, *), let model {
+                return model.shouldBeginEditing(searchBar)
+            }
+            return true
         }
 
         /// Asks the model whether editing may end. Without a model the
@@ -93,8 +112,10 @@ public struct UIKitSearchBar: UIViewRepresentable {
         public func searchBarShouldEndEditing(
             _ searchBar: UISearchBar
         ) -> Bool {
-            guard let model else { return true }
-            return model.shouldEndEditing(searchBar)
+            if #available(iOS 17.0, macCatalyst 17.0, *), let model {
+                return model.shouldEndEditing(searchBar)
+            }
+            return true
         }
 
         public func searchBar(
@@ -102,19 +123,21 @@ public struct UIKitSearchBar: UIViewRepresentable {
             shouldChangeTextIn range: NSRange,
             replacementText text: String
         ) -> Bool {
-            guard let model else { return true }
-            return model.shouldChangeText(
-                in: range,
-                replacement: text,
-                searchBar: searchBar
-            )
+            if #available(iOS 17.0, macCatalyst 17.0, *), let model {
+                return model.shouldChangeText(
+                    in: range,
+                    replacement: text,
+                    searchBar: searchBar
+                )
+            }
+            return true
         }
 
         public func searchBar(
             _ searchBar: UISearchBar,
             textDidChange searchText: String
         ) {
-            if let model {
+            if #available(iOS 17.0, macCatalyst 17.0, *), let model {
                 model.handleTextChanged(searchText)
                 return
             }
@@ -124,7 +147,7 @@ public struct UIKitSearchBar: UIViewRepresentable {
         }
 
         public func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
-            if let model {
+            if #available(iOS 17.0, macCatalyst 17.0, *), let model {
                 model.handleSubmitted()
                 return
             }
@@ -134,7 +157,7 @@ public struct UIKitSearchBar: UIViewRepresentable {
         /// Reports the cancel button to the model, which leaves the query
         /// text untouched, or to the closure in binding mode.
         public func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
-            if let model {
+            if #available(iOS 17.0, macCatalyst 17.0, *), let model {
                 model.handleCancelled()
                 return
             }
@@ -142,7 +165,7 @@ public struct UIKitSearchBar: UIViewRepresentable {
         }
 
         public func searchBarTextDidBeginEditing(_ searchBar: UISearchBar) {
-            if let model {
+            if #available(iOS 17.0, macCatalyst 17.0, *), let model {
                 model.handleEditingBegan()
                 return
             }
@@ -152,7 +175,7 @@ public struct UIKitSearchBar: UIViewRepresentable {
         }
 
         public func searchBarTextDidEndEditing(_ searchBar: UISearchBar) {
-            if let model {
+            if #available(iOS 17.0, macCatalyst 17.0, *), let model {
                 model.handleEditingEnded()
                 return
             }
@@ -164,7 +187,7 @@ public struct UIKitSearchBar: UIViewRepresentable {
 
     public func makeCoordinator() -> Coordinator {
         Coordinator(
-            model: model,
+            modelStorage: modelStorage,
             text: text,
             isFocused: isFocused,
             onSubmit: onSubmit,
@@ -195,15 +218,21 @@ public struct UIKitSearchBar: UIViewRepresentable {
         _ searchBar: UISearchBar,
         coordinator: Coordinator
     ) {
-        coordinator.model = model
+        coordinator.modelStorage = modelStorage
         coordinator.text = text
         coordinator.isFocused = isFocused
         coordinator.onSubmit = onSubmit
         coordinator.onCancel = onCancel
 
+        var currentText = text.wrappedValue
+        var desiredFocus = isFocused?.wrappedValue
         // Reading the model here makes the update depend on its observable
         // state, so SwiftUI re-invokes `updateUIView` when the model changes.
-        let currentText = model?.text ?? text.wrappedValue
+        if #available(iOS 17.0, macCatalyst 17.0, *), let model {
+            currentText = model.text
+            desiredFocus = model.isFocused
+        }
+
         if searchBar.text != currentText {
             searchBar.text = currentText
         }
@@ -211,12 +240,6 @@ public struct UIKitSearchBar: UIViewRepresentable {
         configure(searchBar)
         searchBar.delegate = coordinator
 
-        let desiredFocus: Bool?
-        if let model {
-            desiredFocus = model.isFocused
-        } else {
-            desiredFocus = isFocused?.wrappedValue
-        }
         guard let shouldFocus = desiredFocus else { return }
         if shouldFocus, !searchBar.searchTextField.isFirstResponder {
             searchBar.searchTextField.becomeFirstResponder()

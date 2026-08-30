@@ -13,6 +13,7 @@ import UIKit
 /// Selection notifications are delivered through `events`, which is a
 /// single-consumer `AsyncStream`. Iterate it from exactly one task; a second
 /// consumer competes for elements instead of receiving its own copy.
+@available(iOS 17.0, macCatalyst 17.0, *)
 @Observable @MainActor
 public final class UIKitListModel<
     SectionID: Hashable & Sendable,
@@ -93,6 +94,7 @@ public final class UIKitListModel<
     }
 }
 
+@available(iOS 17.0, macCatalyst 17.0, *)
 public extension UIKitListModel where SectionID == Int {
     /// Creates a single-section model that owns the given items.
     ///

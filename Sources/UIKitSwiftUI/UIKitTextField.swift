@@ -14,10 +14,17 @@ public struct UIKitTextField: UIViewRepresentable {
     private let text: Binding<String>
     private let isFocused: Binding<Bool>?
     private let placeholder: String?
-    private let model: UIKitTextFieldModel?
+    // stored property becomes type-erased — a stored property cannot have a
+    // less-available type than its enclosing struct
+    private let modelStorage: AnyObject?
     private let configure: @MainActor (UITextField) -> Void
     private let onSubmit: @MainActor () -> Void
     private let shouldChange: @MainActor (NSRange, String) -> Bool
+
+    @available(iOS 17.0, macCatalyst 17.0, *)
+    private var model: UIKitTextFieldModel? {
+        modelStorage as? UIKitTextFieldModel
+    }
 
     /// Creates a text field driven by bindings and closures.
     public init(
@@ -31,7 +38,7 @@ public struct UIKitTextField: UIViewRepresentable {
         self.placeholder = placeholder
         self.text = text
         self.isFocused = isFocused
-        model = nil
+        modelStorage = nil
         self.configure = configure
         self.onSubmit = onSubmit
         self.shouldChange = shouldChange
@@ -41,6 +48,9 @@ public struct UIKitTextField: UIViewRepresentable {
     ///
     /// The model owns the text, the focus, and every policy decision, so the
     /// binding-based parameters of the other initializer do not apply here.
+    ///
+    /// The observable model mode requires iOS 17 or newer.
+    @available(iOS 17.0, macCatalyst 17.0, *)
     public init(
         _ placeholder: String? = nil,
         model: UIKitTextFieldModel,
@@ -49,7 +59,7 @@ public struct UIKitTextField: UIViewRepresentable {
         self.placeholder = placeholder
         text = .constant("")
         isFocused = nil
-        self.model = model
+        modelStorage = model
         self.configure = configure
         onSubmit = {}
         shouldChange = { _, _ in true }
@@ -57,20 +67,27 @@ public struct UIKitTextField: UIViewRepresentable {
 
     @MainActor
     public final class Coordinator: NSObject, UITextFieldDelegate {
-        fileprivate var model: UIKitTextFieldModel?
+        // stored property becomes type-erased — a stored property cannot have
+        // a less-available type than its enclosing class
+        fileprivate var modelStorage: AnyObject?
         fileprivate var text: Binding<String>
         fileprivate var isFocused: Binding<Bool>?
         fileprivate var onSubmit: @MainActor () -> Void
         fileprivate var shouldChange: @MainActor (NSRange, String) -> Bool
 
+        @available(iOS 17.0, macCatalyst 17.0, *)
+        fileprivate var model: UIKitTextFieldModel? {
+            modelStorage as? UIKitTextFieldModel
+        }
+
         fileprivate init(
-            model: UIKitTextFieldModel?,
+            modelStorage: AnyObject?,
             text: Binding<String>,
             isFocused: Binding<Bool>?,
             onSubmit: @escaping @MainActor () -> Void,
             shouldChange: @escaping @MainActor (NSRange, String) -> Bool
         ) {
-            self.model = model
+            self.modelStorage = modelStorage
             self.text = text
             self.isFocused = isFocused
             self.onSubmit = onSubmit
@@ -79,7 +96,7 @@ public struct UIKitTextField: UIViewRepresentable {
 
         @objc fileprivate func textDidChange(_ textField: UITextField) {
             let newValue = textField.text ?? ""
-            if let model {
+            if #available(iOS 17.0, macCatalyst 17.0, *), let model {
                 model.handleTextChanged(newValue)
                 return
             }
@@ -93,8 +110,10 @@ public struct UIKitTextField: UIViewRepresentable {
         public func textFieldShouldBeginEditing(
             _ textField: UITextField
         ) -> Bool {
-            guard let model else { return true }
-            return model.shouldBeginEditing(textField)
+            if #available(iOS 17.0, macCatalyst 17.0, *), let model {
+                return model.shouldBeginEditing(textField)
+            }
+            return true
         }
 
         /// Asks the model whether editing may end. Without a model the field
@@ -102,24 +121,28 @@ public struct UIKitTextField: UIViewRepresentable {
         public func textFieldShouldEndEditing(
             _ textField: UITextField
         ) -> Bool {
-            guard let model else { return true }
-            return model.shouldEndEditing(textField)
+            if #available(iOS 17.0, macCatalyst 17.0, *), let model {
+                return model.shouldEndEditing(textField)
+            }
+            return true
         }
 
         /// Asks the model whether the clear button may empty the field, and
         /// reports the clear to the model when it is allowed. Without a model
         /// the field always clears.
         public func textFieldShouldClear(_ textField: UITextField) -> Bool {
-            guard let model else { return true }
-            let shouldClear = model.shouldClear(textField)
-            if shouldClear {
-                model.handleCleared()
+            if #available(iOS 17.0, macCatalyst 17.0, *), let model {
+                let shouldClear = model.shouldClear(textField)
+                if shouldClear {
+                    model.handleCleared()
+                }
+                return shouldClear
             }
-            return shouldClear
+            return true
         }
 
         public func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-            if let model {
+            if #available(iOS 17.0, macCatalyst 17.0, *), let model {
                 let shouldReturn = model.shouldReturn(textField)
                 if shouldReturn {
                     model.handleSubmitted()
@@ -131,7 +154,7 @@ public struct UIKitTextField: UIViewRepresentable {
         }
 
         public func textFieldDidBeginEditing(_ textField: UITextField) {
-            if let model {
+            if #available(iOS 17.0, macCatalyst 17.0, *), let model {
                 model.handleEditingBegan()
                 return
             }
@@ -141,7 +164,7 @@ public struct UIKitTextField: UIViewRepresentable {
         }
 
         public func textFieldDidEndEditing(_ textField: UITextField) {
-            if let model {
+            if #available(iOS 17.0, macCatalyst 17.0, *), let model {
                 model.handleEditingEnded()
                 return
             }
@@ -155,7 +178,7 @@ public struct UIKitTextField: UIViewRepresentable {
             shouldChangeCharactersIn range: NSRange,
             replacementString string: String
         ) -> Bool {
-            if let model {
+            if #available(iOS 17.0, macCatalyst 17.0, *), let model {
                 return model.shouldChangeText(
                     in: range,
                     replacement: string,
@@ -168,7 +191,7 @@ public struct UIKitTextField: UIViewRepresentable {
 
     public func makeCoordinator() -> Coordinator {
         Coordinator(
-            model: model,
+            modelStorage: modelStorage,
             text: text,
             isFocused: isFocused,
             onSubmit: onSubmit,
@@ -209,15 +232,21 @@ public struct UIKitTextField: UIViewRepresentable {
         _ textField: UITextField,
         coordinator: Coordinator
     ) {
-        coordinator.model = model
+        coordinator.modelStorage = modelStorage
         coordinator.text = text
         coordinator.isFocused = isFocused
         coordinator.onSubmit = onSubmit
         coordinator.shouldChange = shouldChange
 
+        var currentText = text.wrappedValue
+        var desiredFocus = isFocused?.wrappedValue
         // Reading the model here makes the update depend on its observable
         // state, so SwiftUI re-invokes `updateUIView` when the model changes.
-        let currentText = model?.text ?? text.wrappedValue
+        if #available(iOS 17.0, macCatalyst 17.0, *), let model {
+            currentText = model.text
+            desiredFocus = model.isFocused
+        }
+
         if textField.text != currentText {
             textField.text = currentText
         }
@@ -225,12 +254,6 @@ public struct UIKitTextField: UIViewRepresentable {
         configure(textField)
         textField.delegate = coordinator
 
-        let desiredFocus: Bool?
-        if let model {
-            desiredFocus = model.isFocused
-        } else {
-            desiredFocus = isFocused?.wrappedValue
-        }
         guard let shouldFocus = desiredFocus else { return }
         if shouldFocus, !textField.isFirstResponder {
             textField.becomeFirstResponder()

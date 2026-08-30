@@ -14,6 +14,7 @@ import UIKit
 /// Notification-style delegate callbacks are delivered through `events`, which
 /// is a single-consumer `AsyncStream`. Iterate it from exactly one task; a
 /// second consumer competes for elements instead of receiving its own copy.
+@available(iOS 17.0, macCatalyst 17.0, *)
 @Observable @MainActor
 public final class UIKitTextFieldModel {
     /// Delegate-notification events, delivered through `events`.

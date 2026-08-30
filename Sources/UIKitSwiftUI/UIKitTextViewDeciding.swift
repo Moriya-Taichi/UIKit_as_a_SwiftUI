@@ -9,6 +9,7 @@ import UIKit
 ///
 /// A decider is injected into `UIKitTextViewModel` at initialization and
 /// owned by that model; the bridge never talks to it directly.
+@available(iOS 17.0, macCatalyst 17.0, *)
 @MainActor
 public protocol UIKitTextViewDeciding {
     /// Decides whether the view may become first responder.
@@ -30,6 +31,7 @@ public protocol UIKitTextViewDeciding {
     ) -> Bool
 }
 
+@available(iOS 17.0, macCatalyst 17.0, *)
 public extension UIKitTextViewDeciding {
     /// Allows editing to begin.
     func shouldBeginEditing(_ textView: UITextView) -> Bool { true }

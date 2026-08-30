@@ -9,6 +9,7 @@ import UIKit
 ///
 /// A decider is injected into `UIKitTextFieldModel` at initialization and
 /// owned by that model; the bridge never talks to it directly.
+@available(iOS 17.0, macCatalyst 17.0, *)
 @MainActor
 public protocol UIKitTextFieldDeciding {
     /// Decides whether the field may become first responder.
@@ -36,6 +37,7 @@ public protocol UIKitTextFieldDeciding {
     func shouldReturn(_ textField: UITextField) -> Bool
 }
 
+@available(iOS 17.0, macCatalyst 17.0, *)
 public extension UIKitTextFieldDeciding {
     /// Allows editing to begin.
     func shouldBeginEditing(_ textField: UITextField) -> Bool { true }

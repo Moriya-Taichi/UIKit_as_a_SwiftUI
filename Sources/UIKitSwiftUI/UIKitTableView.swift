@@ -10,6 +10,7 @@ private let tableViewCellReuseIdentifier = "UIKitSwiftUI.UIKitTableView.Cell"
 /// a `UITableViewDiffableDataSource` built from the model's snapshot. Callers
 /// never implement `UITableViewDataSource`: they only describe how an item
 /// becomes a cell.
+@available(iOS 17.0, macCatalyst 17.0, *)
 @MainActor
 public struct UIKitTableView<
     SectionID: Hashable & Sendable,
