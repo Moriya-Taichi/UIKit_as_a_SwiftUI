@@ -23,6 +23,11 @@ import UIKit
 /// single-consumer `AsyncStream`. Iterate it from exactly one task; a second
 /// consumer competes for elements instead of receiving its own copy.
 @available(iOS 17.0, macCatalyst 17.0, *)
+// `@Observable` is safe here, unlike in `UIKitTextFieldModel`: a generic class
+// is realized lazily and never appears in the ObjC class list, so the ObjC
+// runtime cannot realize it on iOS 16 and trip over the stored
+// `ObservationRegistrar` the macro injects. The non-generic text-input models
+// hand-roll the macro's expansion for exactly that reason.
 @Observable @MainActor
 public final class UIKitListModel<
     SectionID: Hashable & Sendable,

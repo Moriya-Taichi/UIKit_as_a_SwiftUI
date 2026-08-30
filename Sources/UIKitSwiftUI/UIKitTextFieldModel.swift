@@ -15,8 +15,8 @@ import UIKit
 /// is a single-consumer `AsyncStream`. Iterate it from exactly one task; a
 /// second consumer competes for elements instead of receiving its own copy.
 @available(iOS 17.0, macCatalyst 17.0, *)
-@Observable @MainActor
-public final class UIKitTextFieldModel {
+@MainActor
+public final class UIKitTextFieldModel: Observable {
     /// Delegate-notification events, delivered through `events`.
     public enum Event: Equatable, Sendable {
         /// The field became first responder.
@@ -31,14 +31,58 @@ public final class UIKitTextFieldModel {
         case editingEnded
     }
 
+    // Stored properties must reference only always-available types: the ObjC
+    // runtime realizes this class during class enumeration (XCTest, analytics
+    // SDKs) even on iOS 16, where it never gets instantiated, and a stored
+    // field of an iOS 17-only type such as `ObservationRegistrar` crashes
+    // that realization. The registrar is therefore stored type-erased.
+    private let registrarBox: Any
+    private var _text: String
+    private var _isFocused: Bool
+    private var _isEditing: Bool
+
+    private var registrar: ObservationRegistrar {
+        registrarBox as! ObservationRegistrar
+    }
+
     /// The field's text. Two-way: set it to update the attached field.
-    public var text: String
+    public var text: String {
+        get {
+            registrar.access(self, keyPath: \.text)
+            return _text
+        }
+        set {
+            registrar.withMutation(of: self, keyPath: \.text) {
+                _text = newValue
+            }
+        }
+    }
 
     /// The desired focus. Two-way: set it to move first responder.
-    public var isFocused: Bool
+    public var isFocused: Bool {
+        get {
+            registrar.access(self, keyPath: \.isFocused)
+            return _isFocused
+        }
+        set {
+            registrar.withMutation(of: self, keyPath: \.isFocused) {
+                _isFocused = newValue
+            }
+        }
+    }
 
     /// Whether the field is currently editing. Read-only observation.
-    public private(set) var isEditing: Bool
+    public private(set) var isEditing: Bool {
+        get {
+            registrar.access(self, keyPath: \.isEditing)
+            return _isEditing
+        }
+        set {
+            registrar.withMutation(of: self, keyPath: \.isEditing) {
+                _isEditing = newValue
+            }
+        }
+    }
 
     /// The stream of delegate notifications for this model.
     ///
@@ -47,10 +91,8 @@ public final class UIKitTextFieldModel {
     /// beyond that, so subscribe before the events matter.
     public let events: AsyncStream<Event>
 
-    @ObservationIgnored
     private let eventContinuation: AsyncStream<Event>.Continuation
 
-    @ObservationIgnored
     private let decider: (any UIKitTextFieldDeciding)?
 
     /// Creates a model, optionally with a decider that answers policy
@@ -59,9 +101,10 @@ public final class UIKitTextFieldModel {
         text: String = "",
         decider: (any UIKitTextFieldDeciding)? = nil
     ) {
-        self.text = text
-        isFocused = false
-        isEditing = false
+        registrarBox = ObservationRegistrar()
+        _text = text
+        _isFocused = false
+        _isEditing = false
         self.decider = decider
         let (stream, continuation) = AsyncStream.makeStream(
             of: Event.self,
