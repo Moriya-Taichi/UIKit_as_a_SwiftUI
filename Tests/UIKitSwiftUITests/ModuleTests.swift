@@ -64,4 +64,17 @@ final class ModuleTests: XCTestCase {
             type(of: controllerBridge) == UIKitViewController<CustomController>.self
         )
     }
+
+    func testControlBridgePreservesConcreteControlType() {
+        final class CustomControl: UIControl {}
+
+        let bridge = UIKitControl(
+            make: CustomControl.init,
+            events: .valueChanged
+        )
+
+        XCTAssertTrue(
+            type(of: bridge) == UIKitControl<CustomControl>.self
+        )
+    }
 }
