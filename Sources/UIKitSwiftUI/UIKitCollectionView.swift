@@ -45,7 +45,9 @@ public struct UIKitCollectionView<
     ///
     /// The registration for `cellType` is managed internally and created
     /// exactly once per collection view; `cell` configures every dequeued
-    /// cell and is refreshed on every update.
+    /// cell and is refreshed on every update. Every visible cell is
+    /// reconfigured on each update, so the state `cell` captures stays
+    /// current even when the items themselves are unchanged.
     public init<Cell: UICollectionViewCell>(
         model: UIKitListModel<SectionID, Item>,
         layout: @escaping @MainActor () -> UICollectionViewLayout,
@@ -86,6 +88,10 @@ public struct UIKitCollectionView<
 
     /// Creates a collection view whose cells are list cells configured from
     /// the content the closure returns.
+    ///
+    /// Every visible cell is reconfigured on each update, so the state the
+    /// closure captures stays current even when the items themselves are
+    /// unchanged.
     public init(
         model: UIKitListModel<SectionID, Item>,
         layout: @escaping @MainActor () -> UICollectionViewLayout,
@@ -199,10 +205,13 @@ public struct UIKitCollectionView<
         // Reading the model here makes the update depend on its observable
         // state, so SwiftUI re-invokes `updateUIView` when the model changes.
         let updated = model.snapshot()
-        guard Self.hasChanges(from: dataSource.snapshot(), to: updated) else {
-            return
-        }
-        dataSource.apply(updated, animatingDifferences: animatesDifferences)
+        dataSource.apply(
+            Self.updateSnapshot(
+                current: dataSource.snapshot(),
+                updated: updated
+            ),
+            animatingDifferences: animatesDifferences
+        )
     }
 
     public static func dismantleUIView(
@@ -215,23 +224,24 @@ public struct UIKitCollectionView<
         coordinator.model = nil
     }
 
-    private static func hasChanges(
-        from current: NSDiffableDataSourceSnapshot<SectionID, Item>,
-        to updated: NSDiffableDataSourceSnapshot<SectionID, Item>
-    ) -> Bool {
-        guard current.sectionIdentifiers == updated.sectionIdentifiers else {
-            return true
+    /// The snapshot to apply for `updated`, with every item that persists
+    /// from `current` marked for reconfiguration.
+    ///
+    /// An update whose identifiers are unchanged still has to re-run the cell
+    /// path, because the configuration closure captures SwiftUI state that
+    /// may have moved on. Reconfiguration re-invokes the registration handler
+    /// for the item's existing cell instead of replacing the cell, so the
+    /// diff stays a no-op while the content refreshes.
+    static func updateSnapshot(
+        current: NSDiffableDataSourceSnapshot<SectionID, Item>,
+        updated: NSDiffableDataSourceSnapshot<SectionID, Item>
+    ) -> NSDiffableDataSourceSnapshot<SectionID, Item> {
+        var result = updated
+        let currentItems = Set(current.itemIdentifiers)
+        let persisting = result.itemIdentifiers.filter(currentItems.contains)
+        if !persisting.isEmpty {
+            result.reconfigureItems(persisting)
         }
-        if current.itemIdentifiers != updated.itemIdentifiers {
-            return true
-        }
-        for section in updated.sectionIdentifiers {
-            let currentItems = current.itemIdentifiers(inSection: section)
-            let updatedItems = updated.itemIdentifiers(inSection: section)
-            if currentItems != updatedItems {
-                return true
-            }
-        }
-        return false
+        return result
     }
 }
