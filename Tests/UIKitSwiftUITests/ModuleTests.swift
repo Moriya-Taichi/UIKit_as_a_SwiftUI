@@ -41,4 +41,27 @@ final class ModuleTests: XCTestCase {
             type(of: bridge) == UIKitCoordinatedView<UITextField, Delegate>.self
         )
     }
+
+    func testControllerBridgeAcceptsCustomControllerSubclass() {
+        final class CustomController: UIViewController {}
+
+        let bridge = UIKitViewController(make: CustomController.init)
+
+        XCTAssertTrue(
+            type(of: bridge) == UIKitViewController<CustomController>.self
+        )
+    }
+
+    func testInstanceBridgeExtensionsPreserveConcreteTypes() {
+        final class CustomView: UIView {}
+        final class CustomController: UIViewController {}
+
+        let viewBridge = CustomView().asSwiftUI()
+        let controllerBridge = CustomController().asSwiftUI()
+
+        XCTAssertTrue(type(of: viewBridge) == UIKitView<CustomView>.self)
+        XCTAssertTrue(
+            type(of: controllerBridge) == UIKitViewController<CustomController>.self
+        )
+    }
 }
