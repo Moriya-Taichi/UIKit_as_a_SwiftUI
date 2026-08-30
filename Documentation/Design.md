@@ -30,15 +30,66 @@ bridge rather than representables themselves.
 
 Every bridge is isolated to `MainActor`, matching UIKit's threading model.
 
+## Observable models, deciders, and event streams
+
+Text input and list data follow the split WebKit uses for its SwiftUI
+`WebPage` / `WebView` pair. An `@Observable` `@MainActor` model owns the data,
+the desired focus, the selection, and the policy; the representable is only a
+bridge that synchronizes that model with the UIKit instance. The model types
+are `UIKitTextFieldModel`, `UIKitTextViewModel`, `UIKitSearchBarModel`, and
+`UIKitListModel`; the bridges that display them are `UIKitTextField`,
+`UIKitTextView`, `UIKitSearchBar`, `UIKitTableView`, and
+`UIKitCollectionView`.
+
+Policy delegate methods become `*Deciding` protocols rather than closures:
+`UIKitTextFieldDeciding`, `UIKitTextViewDeciding`, `UIKitSearchBarDeciding`.
+Each is a `@MainActor` protocol whose requirements return a decision and carry
+a permissive default, so a conforming type implements only the checks it needs
+and inherits `true` for the rest. A decider is injected at model
+initialization and owned by the model; the bridge asks the model, never the
+decider.
+
+Notification-style delegate callbacks become elements of one `AsyncStream`
+exposed as `model.events`. The stream is single-consumer: iterate it from
+exactly one task, because a second consumer competes for elements instead of
+receiving its own copy. The continuation finishes when the model
+deinitializes.
+
+`UIKitListModel` owns the sections and the items. `UIKitTableView` and
+`UIKitCollectionView` translate that data into an
+`NSDiffableDataSourceSnapshot` and apply it to a diffable data source they
+own, so callers never implement `UITableViewDataSource` or
+`UICollectionViewDataSource`; they only describe how an item becomes a cell.
+Item identity is value identity: an item whose value changes is a new
+identifier to the diff, so it appears as a removal and an insertion rather
+than an in-place update. Use an item type that carries only stable identity
+when a change must read as an update. Because the items are the identifiers,
+they must be unique across the whole model rather than only within a section;
+a duplicate is a programmer error that trips an assertion in debug builds and
+can crash the data source when applied.
+
+The binding and closure initializers remain as the lighter alternative for
+cases that need no model, and the two modes never mix within one bridge
+instance. An instance created with `model:` ignores the binding parameters and
+routes every delegate callback through the model; an instance created with
+bindings never touches a model.
+
+The whole layer is built on `@Observable`, so the model types, the `*Deciding`
+protocols, `UIKitTableView`, `UIKitCollectionView`, and the `init(model:)` of
+each text bridge are marked `@available(iOS 17.0, macCatalyst 17.0, *)`. The
+package minimum stays iOS 16, and the binding mode of every bridge remains
+available from that target: the bridges hold the model in a type-erased stored
+property and read it only behind an availability check.
+
 ## SDK compatibility
 
 The package deployment target is iOS 16 and Mac Catalyst 16. The generic
 bridges do not switch on OS version and do not reflect over SDK symbols. A
 client may instantiate any view visible in the SDK it compiles against and use
-normal `@available` checks for SDK-specific types. The only SDK-gated API in
-the package is `UIKitViewCatalog.contentUnavailableView`, marked
-`@available(iOS 17.0, macCatalyst 17.0, *)`; everything else compiles for
-iOS 16.
+normal `@available` checks for SDK-specific types. The gated API in the
+package is `UIKitViewCatalog.contentUnavailableView` and the observable-model
+layer, both marked `@available(iOS 17.0, macCatalyst 17.0, *)`; everything
+else compiles for iOS 16.
 
 CI builds the same source with both ends of the supported SDK range and runs
 the tests on the minimum deployment target:
@@ -51,6 +102,7 @@ References:
 
 - [UIViewRepresentable](https://developer.apple.com/documentation/swiftui/uiviewrepresentable)
 - [UIKit](https://developer.apple.com/documentation/uikit)
+- [WebPage](https://developer.apple.com/documentation/webkit/webpage)
 - [iOS 18 release notes](https://developer.apple.com/documentation/ios-ipados-release-notes/ios-ipados-18-release-notes)
 - [iOS 26 release notes](https://developer.apple.com/documentation/ios-ipados-release-notes/ios-ipados-26-release-notes)
 - [iOS 27 release notes](https://developer.apple.com/documentation/ios-ipados-release-notes/ios-ipados-27-release-notes)
