@@ -97,4 +97,14 @@ final class ModuleTests: XCTestCase {
         XCTAssertNotNil(type(of: pages))
         XCTAssertNotNil(type(of: segments))
     }
+
+    func testTextFieldAcceptsTextAndFocusBindings() {
+        let textField = UIKitTextField(
+            "Placeholder",
+            text: .constant("Value"),
+            isFocused: .constant(false)
+        )
+
+        XCTAssertNotNil(type(of: textField))
+    }
 }
