@@ -118,4 +118,29 @@ final class ModuleTests: XCTestCase {
         XCTAssertNotNil(type(of: textView))
         XCTAssertNotNil(type(of: searchBar))
     }
+
+    func testPropertyConfigurationKeepsConcreteType() {
+        let label = UIKitView(make: UILabel.init)
+            .setting(\.text, to: "Hello")
+            .accessibility(
+                UIKitAccessibility(
+                    identifier: "greeting",
+                    label: "Greeting"
+                )
+            )
+
+        XCTAssertTrue(type(of: label) == UIKitView<UILabel>.self)
+    }
+
+    func testCatalogFactoriesReturnTypedBridges() {
+        let label = UIKitViewCatalog.label()
+        let collection = UIKitViewCatalog.collectionView {
+            UICollectionViewFlowLayout()
+        }
+
+        XCTAssertTrue(type(of: label) == UIKitView<UILabel>.self)
+        XCTAssertTrue(
+            type(of: collection) == UIKitView<UICollectionView>.self
+        )
+    }
 }
