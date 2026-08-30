@@ -15,6 +15,11 @@ UIKitの任意のビューを、具体型を消さずにSwiftUIへ組み込む�
 | 任意の`UIControl`サブクラス | `UIKitControl<ControlType>` |
 | 任意の`UIViewController`サブクラス | `UIKitViewController<ControllerType>` |
 | coordinatorが必要な`UIViewController` | `UIKitCoordinatedViewController<ControllerType, Coordinator>` |
+| `UITextField`（モデル駆動） | `UIKitTextFieldModel` + `UIKitTextField(model:)` |
+| `UITextView`（モデル駆動） | `UIKitTextViewModel` + `UIKitTextView(model:)` |
+| `UISearchBar`（モデル駆動） | `UIKitSearchBarModel` + `UIKitSearchBar(model:)` |
+| `UITableView`のdata source | `UIKitListModel` + `UIKitTableView(model:)` |
+| `UICollectionView`のdata source | `UIKitListModel` + `UIKitCollectionView(model:)` |
 
 `UIViewController`は`UIViewRepresentable`で包むとcontainmentとappearance lifecycleが壊れるため、Appleの設計どおり`UIViewControllerRepresentable`を使います。
 
@@ -130,6 +135,87 @@ struct Controls: View {
 - `UIKitButton`
 
 独自の`UIControl`には`UIKitControl`を使います。`UIAction`は一度だけ登録され、SwiftUIの更新時に重複せず、dismantle時に解除されます。
+
+## Observableモデルで使う
+
+WebKitのSwiftUI版`WebPage`と同じ発想で、`@Observable`なモデルがデータとポリシーを所有し、ビューは表示に徹します。テキスト、フォーカス、選択状態、そして「許可するかどうか」の判断はモデル側にあり、ブリッジはモデルとUIKitインスタンスを同期するだけです。
+
+判断が必要なdelegateメソッドは`UIKitTextFieldDeciding`のような`*Deciding`プロトコルになります。全ての要件に許可側のデフォルト実装があるので、必要な判断だけを実装します。deciderはモデルの初期化時に渡してモデルが保持し、ブリッジがdeciderに直接触れることはありません。
+
+通知的なdelegateコールバックは`model.events`という単一の`AsyncStream`に流れます。**単一コンシューマ**なので、購読するtaskは1つだけにしてください。2つ目のコンシューマは自分用のコピーを受け取るのではなく、要素を奪い合います。
+
+```swift
+struct PhoneNumberField: View {
+    struct DigitsOnly: UIKitTextFieldDeciding {
+        func shouldChangeText(
+            in range: NSRange,
+            replacement: String,
+            textField: UITextField
+        ) -> Bool {
+            replacement.isEmpty || replacement.allSatisfy(\.isNumber)
+        }
+    }
+
+    @State private var model = UIKitTextFieldModel(decider: DigitsOnly())
+
+    var body: some View {
+        UIKitTextField("電話番号", model: model)
+            .task {
+                for await event in model.events {
+                    switch event {
+                    case .textChanged(let text):
+                        print("入力中: \(text)")
+                    case .submitted:
+                        print("確定: \(model.text)")
+                    case .editingBegan, .editingEnded, .cleared:
+                        break
+                    }
+                }
+            }
+    }
+}
+```
+
+`UIKitTextViewModel`と`UIKitSearchBarModel`も同じ形です。
+
+table viewとcollection viewでは`UIKitListModel`がsectionとitemを所有し、ブリッジがdiffable data sourceのsnapshotへ変換します。`UITableViewDataSource`や`UICollectionViewDataSource`を実装する必要はありません。`model.items`を書き換えれば表示が更新され、選択は`model.selectedItems`と`model.events`から届きます。itemの同一性は値の同一性なので、値が変わったitemはdiffにとって別のitemになります。
+
+```swift
+struct FruitList: View {
+    @State private var model = UIKitListModel<Int, String>(
+        items: ["apple", "banana"]
+    )
+
+    var body: some View {
+        VStack {
+            UIKitTableView(
+                model: model,
+                style: .insetGrouped,
+                content: { item in
+                    var configuration = UIListContentConfiguration.cell()
+                    configuration.text = item
+                    return configuration
+                }
+            )
+            Button("追加") {
+                model.items.append("cherry")
+            }
+            Text("選択中: \(model.selectedItems.joined(separator: ", "))")
+        }
+        .task {
+            for await event in model.events {
+                if case .selected(let item) = event {
+                    print("選択: \(item)")
+                }
+            }
+        }
+    }
+}
+```
+
+`UIKitCollectionView(model:layout:content:)`も同じ`UIKitListModel`をそのまま使えます。
+
+既存の`Binding`やクロージャを使うAPIはそのまま利用できます。モデルを使わない軽い用途にはそちらが向いています。ただし1つのブリッジインスタンスで両方が混ざることはなく、`model:`で作ったインスタンスは`Binding`の引数を無視します。
 
 ## 初期化が特殊なビュー
 
