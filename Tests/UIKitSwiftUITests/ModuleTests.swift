@@ -24,4 +24,21 @@ final class ModuleTests: XCTestCase {
 
         XCTAssertNil(label.text)
     }
+
+    func testCoordinatedBridgeAcceptsDelegateValue() {
+        final class Delegate: NSObject, UITextFieldDelegate {}
+
+        let bridge = UIKitCoordinatedView(
+            makeCoordinator: Delegate.init,
+            make: { delegate, _ in
+                let textField = UITextField()
+                textField.delegate = delegate
+                return textField
+            }
+        )
+
+        XCTAssertTrue(
+            type(of: bridge) == UIKitCoordinatedView<UITextField, Delegate>.self
+        )
+    }
 }
