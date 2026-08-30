@@ -56,8 +56,8 @@ final class ModuleTests: XCTestCase {
         final class CustomView: UIView {}
         final class CustomController: UIViewController {}
 
-        let viewBridge = CustomView().asSwiftUI()
-        let controllerBridge = CustomController().asSwiftUI()
+        let viewBridge = UIKitBridge.view(CustomView())
+        let controllerBridge = UIKitBridge.controller(CustomController())
 
         XCTAssertTrue(type(of: viewBridge) == UIKitView<CustomView>.self)
         XCTAssertTrue(
