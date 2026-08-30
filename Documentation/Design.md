@@ -32,10 +32,13 @@ Every bridge is isolated to `MainActor`, matching UIKit's threading model.
 
 ## SDK compatibility
 
-The package deployment target is iOS 18 and Mac Catalyst 18. The generic
+The package deployment target is iOS 16 and Mac Catalyst 16. The generic
 bridges do not switch on OS version and do not reflect over SDK symbols. A
 client may instantiate any view visible in the SDK it compiles against and use
-normal `@available` checks for SDK-specific types.
+normal `@available` checks for SDK-specific types. The only SDK-gated API in
+the package is `UIKitViewCatalog.contentUnavailableView`, marked
+`@available(iOS 17.0, macCatalyst 17.0, *)`; everything else compiles for
+iOS 16.
 
 CI builds the same source with both ends of the supported SDK range:
 
