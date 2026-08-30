@@ -107,4 +107,15 @@ final class ModuleTests: XCTestCase {
 
         XCTAssertNotNil(type(of: textField))
     }
+
+    func testMultilineAndSearchInputsAcceptBindings() {
+        let textView = UIKitTextView(text: .constant("Body"))
+        let searchBar = UIKitSearchBar(
+            text: .constant("Query"),
+            prompt: "Search"
+        )
+
+        XCTAssertNotNil(type(of: textView))
+        XCTAssertNotNil(type(of: searchBar))
+    }
 }
