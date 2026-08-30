@@ -53,13 +53,19 @@ public struct UIKitView<ViewType: UIView>: UIViewRepresentable {
         dismantle: @escaping DismantleUIView = { _ in },
         sizeThatFits: (@MainActor (ProposedViewSize, ViewType) -> CGSize?)? = nil
     ) {
-        self.init(
-            make: { _ in make() },
-            update: { view, _ in update(view) },
-            dismantle: dismantle,
-            sizeThatFits: sizeThatFits.map { measure in
-                { proposal, view, _ in measure(proposal, view) }
+        let contextualMeasure: MeasureUIView?
+        if let sizeThatFits {
+            contextualMeasure = { proposal, view, _ in
+                sizeThatFits(proposal, view)
             }
+        } else {
+            contextualMeasure = nil
+        }
+        self.init(
+            make: { (_: Context) -> ViewType in make() },
+            update: { (view: ViewType, _: Context) in update(view) },
+            dismantle: dismantle,
+            sizeThatFits: contextualMeasure
         )
     }
 
@@ -163,4 +169,3 @@ public extension UIKitView {
         )
     }
 }
-

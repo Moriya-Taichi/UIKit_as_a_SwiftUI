@@ -49,13 +49,21 @@ public struct UIKitViewController<ControllerType: UIViewController>: UIViewContr
         dismantle: @escaping DismantleController = { _ in },
         sizeThatFits: (@MainActor (ProposedViewSize, ControllerType) -> CGSize?)? = nil
     ) {
-        self.init(
-            make: { _ in make() },
-            update: { controller, _ in update(controller) },
-            dismantle: dismantle,
-            sizeThatFits: sizeThatFits.map { measure in
-                { proposal, controller, _ in measure(proposal, controller) }
+        let contextualMeasure: MeasureController?
+        if let sizeThatFits {
+            contextualMeasure = { proposal, controller, _ in
+                sizeThatFits(proposal, controller)
             }
+        } else {
+            contextualMeasure = nil
+        }
+        self.init(
+            make: { (_: Context) -> ControllerType in make() },
+            update: { (controller: ControllerType, _: Context) in
+                update(controller)
+            },
+            dismantle: dismantle,
+            sizeThatFits: contextualMeasure
         )
     }
 
@@ -144,4 +152,3 @@ public extension UIKitViewController {
         )
     }
 }
-
