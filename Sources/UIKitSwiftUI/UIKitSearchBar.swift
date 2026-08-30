@@ -18,6 +18,11 @@ public struct UIKitSearchBar: UIViewRepresentable {
     // stored property becomes type-erased — a stored property cannot have a
     // less-available type than its enclosing struct
     private let modelStorage: AnyObject?
+    // Capture the observable values while SwiftUI evaluates the caller's
+    // body. Reads made only from `updateUIView` don't establish a documented
+    // SwiftUI observation dependency.
+    private let modelText: String?
+    private let modelIsFocused: Bool?
     private let configure: @MainActor (UISearchBar) -> Void
     private let onSubmit: @MainActor () -> Void
     private let onCancel: @MainActor () -> Void
@@ -40,6 +45,8 @@ public struct UIKitSearchBar: UIViewRepresentable {
         self.prompt = prompt
         self.isFocused = isFocused
         modelStorage = nil
+        modelText = nil
+        modelIsFocused = nil
         self.configure = configure
         self.onSubmit = onSubmit
         self.onCancel = onCancel
@@ -62,6 +69,8 @@ public struct UIKitSearchBar: UIViewRepresentable {
         self.prompt = prompt
         isFocused = nil
         modelStorage = model
+        modelText = model.text
+        modelIsFocused = model.isFocused
         self.configure = configure
         onSubmit = {}
         onCancel = {}
@@ -226,11 +235,9 @@ public struct UIKitSearchBar: UIViewRepresentable {
 
         var currentText = text.wrappedValue
         var desiredFocus = isFocused?.wrappedValue
-        // Reading the model here makes the update depend on its observable
-        // state, so SwiftUI re-invokes `updateUIView` when the model changes.
-        if #available(iOS 17.0, macCatalyst 17.0, *), let model {
-            currentText = model.text
-            desiredFocus = model.isFocused
+        if let modelText, let modelIsFocused {
+            currentText = modelText
+            desiredFocus = modelIsFocused
         }
 
         if searchBar.text != currentText {
@@ -248,4 +255,3 @@ public struct UIKitSearchBar: UIViewRepresentable {
         }
     }
 }
-

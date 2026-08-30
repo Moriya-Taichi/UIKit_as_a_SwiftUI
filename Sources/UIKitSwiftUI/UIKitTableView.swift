@@ -26,6 +26,9 @@ public struct UIKitTableView<
     ) -> UITableViewCell
 
     private let model: UIKitListModel<SectionID, Item>
+    // Built while SwiftUI evaluates the caller's body so reading `sections`
+    // establishes the observation dependency that recreates this value.
+    private let snapshot: NSDiffableDataSourceSnapshot<SectionID, Item>
     private let style: UITableView.Style
     private let animatesDifferences: Bool
     private let configure: @MainActor (UITableView) -> Void
@@ -45,6 +48,7 @@ public struct UIKitTableView<
         cell: @escaping CellProvider
     ) {
         self.model = model
+        snapshot = model.snapshot()
         self.style = style
         self.animatesDifferences = animatesDifferences
         self.configure = configure
@@ -149,7 +153,7 @@ public struct UIKitTableView<
 
         tableView.delegate = coordinator
         configure(tableView)
-        dataSource.apply(model.snapshot(), animatingDifferences: false)
+        dataSource.apply(snapshot, animatingDifferences: false)
         return tableView
     }
 
@@ -163,13 +167,10 @@ public struct UIKitTableView<
         }
 
         guard let dataSource = coordinator.dataSource else { return }
-        // Reading the model here makes the update depend on its observable
-        // state, so SwiftUI re-invokes `updateUIView` when the model changes.
-        let updated = model.snapshot()
         dataSource.apply(
             Self.updateSnapshot(
                 current: dataSource.snapshot(),
-                updated: updated
+                updated: snapshot
             ),
             animatingDifferences: animatesDifferences
         )

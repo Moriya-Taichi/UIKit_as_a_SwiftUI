@@ -17,6 +17,11 @@ public struct UIKitTextField: UIViewRepresentable {
     // stored property becomes type-erased — a stored property cannot have a
     // less-available type than its enclosing struct
     private let modelStorage: AnyObject?
+    // Capture the observable values while SwiftUI evaluates the caller's
+    // body. Reads made only from `updateUIView` don't establish a documented
+    // SwiftUI observation dependency.
+    private let modelText: String?
+    private let modelIsFocused: Bool?
     private let configure: @MainActor (UITextField) -> Void
     private let onSubmit: @MainActor () -> Void
     private let shouldChange: @MainActor (NSRange, String) -> Bool
@@ -39,6 +44,8 @@ public struct UIKitTextField: UIViewRepresentable {
         self.text = text
         self.isFocused = isFocused
         modelStorage = nil
+        modelText = nil
+        modelIsFocused = nil
         self.configure = configure
         self.onSubmit = onSubmit
         self.shouldChange = shouldChange
@@ -60,6 +67,8 @@ public struct UIKitTextField: UIViewRepresentable {
         text = .constant("")
         isFocused = nil
         modelStorage = model
+        modelText = model.text
+        modelIsFocused = model.isFocused
         self.configure = configure
         onSubmit = {}
         shouldChange = { _, _ in true }
@@ -240,11 +249,9 @@ public struct UIKitTextField: UIViewRepresentable {
 
         var currentText = text.wrappedValue
         var desiredFocus = isFocused?.wrappedValue
-        // Reading the model here makes the update depend on its observable
-        // state, so SwiftUI re-invokes `updateUIView` when the model changes.
-        if #available(iOS 17.0, macCatalyst 17.0, *), let model {
-            currentText = model.text
-            desiredFocus = model.isFocused
+        if let modelText, let modelIsFocused {
+            currentText = modelText
+            desiredFocus = modelIsFocused
         }
 
         if textField.text != currentText {
@@ -262,4 +269,3 @@ public struct UIKitTextField: UIViewRepresentable {
         }
     }
 }
-
