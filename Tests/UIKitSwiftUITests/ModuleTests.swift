@@ -28,7 +28,7 @@ final class ModuleTests: XCTestCase {
     func testCoordinatedBridgeAcceptsDelegateValue() {
         final class Delegate: NSObject, UITextFieldDelegate {}
 
-        let bridge = UIKitCoordinatedView(
+        let bridge: UIKitCoordinatedView<UITextField, Delegate> = UIKitCoordinatedView(
             makeCoordinator: Delegate.init,
             make: { delegate, _ in
                 let textField = UITextField()
