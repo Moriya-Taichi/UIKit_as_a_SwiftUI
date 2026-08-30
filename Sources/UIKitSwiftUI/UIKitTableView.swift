@@ -128,14 +128,17 @@ public struct UIKitTableView<
         coordinator.cellProvider = cell
 
         // The SDK's cell provider is not actor-annotated on every supported
-        // SDK, and the data source only calls it on the main actor.
+        // SDK, and the data source only calls it on the main actor. The cell
+        // leaves the assumption through a `nonisolated(unsafe)` local because
+        // `assumeIsolated` constrains its own result type on some toolchains.
         let dataSource = UITableViewDiffableDataSource<SectionID, Item>(
             tableView: tableView
         ) { [weak coordinator] tableView, indexPath, item in
+            nonisolated(unsafe) var cell: UITableViewCell? = nil
             MainActor.assumeIsolated {
-                coordinator?.cellProvider(tableView, indexPath, item)
-                    ?? UITableViewCell()
+                cell = coordinator?.cellProvider(tableView, indexPath, item)
             }
+            return cell
         }
         coordinator.dataSource = dataSource
 

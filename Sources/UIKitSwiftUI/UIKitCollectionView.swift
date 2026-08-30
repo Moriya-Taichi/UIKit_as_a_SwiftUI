@@ -161,14 +161,21 @@ public struct UIKitCollectionView<
         coordinator.cellProvider = makeCellProvider(coordinator)
 
         // The SDK's cell provider is not actor-annotated on every supported
-        // SDK, and the data source only calls it on the main actor.
+        // SDK, and the data source only calls it on the main actor. The cell
+        // leaves the assumption through a `nonisolated(unsafe)` local because
+        // `assumeIsolated` constrains its own result type on some toolchains.
         let dataSource = UICollectionViewDiffableDataSource<SectionID, Item>(
             collectionView: collectionView
         ) { [weak coordinator] collectionView, indexPath, item in
+            nonisolated(unsafe) var cell: UICollectionViewCell? = nil
             MainActor.assumeIsolated {
-                coordinator?.cellProvider?(collectionView, indexPath, item)
-                    ?? UICollectionViewCell()
+                cell = coordinator?.cellProvider?(
+                    collectionView,
+                    indexPath,
+                    item
+                )
             }
+            return cell
         }
         coordinator.dataSource = dataSource
 
