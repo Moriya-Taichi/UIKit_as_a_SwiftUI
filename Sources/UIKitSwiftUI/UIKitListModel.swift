@@ -60,7 +60,11 @@ public final class UIKitListModel<
     ///
     /// Section identifiers must be unique, and items must be unique across
     /// every section: each item is its own diffable identifier.
-    public var sections: [Section]
+    public var sections: [Section] {
+        didSet {
+            removeSelectionsMissingFromSections()
+        }
+    }
 
     /// The items currently selected in an attached view. Read-only
     /// observation: the bridges maintain it from their delegate callbacks.
@@ -104,6 +108,11 @@ public final class UIKitListModel<
             selectedItems.remove(at: index)
         }
         eventContinuation.yield(.deselected(item))
+    }
+
+    private func removeSelectionsMissingFromSections() {
+        let availableItems = Set(sections.flatMap(\.items))
+        selectedItems.removeAll { !availableItems.contains($0) }
     }
 
     func snapshot() -> NSDiffableDataSourceSnapshot<SectionID, Item> {

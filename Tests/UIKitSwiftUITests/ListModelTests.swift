@@ -121,6 +121,20 @@ final class ListModelTests: XCTestCase {
         XCTAssertEqual(deselected, .deselected("a"))
     }
 
+    func testRemovingItemsPrunesSelection() throws {
+        guard #available(iOS 17.0, macCatalyst 17.0, *) else {
+            throw XCTSkip("Observable models require iOS 17.")
+        }
+
+        let model = StringListModel(items: ["a", "b", "c"])
+        model.handleSelected("a")
+        model.handleSelected("b")
+
+        model.items = ["b", "c"]
+
+        XCTAssertEqual(model.selectedItems, ["b"])
+    }
+
     func testTableViewBridgesPinGenericTypes() throws {
         guard #available(iOS 17.0, macCatalyst 17.0, *) else {
             throw XCTSkip("Observable models require iOS 17.")
