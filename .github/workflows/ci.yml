@@ -18,9 +18,11 @@ jobs:
           - name: Xcode 16 / iOS 18 SDK
             runner: macos-15
             xcode: /Applications/Xcode_16.4.app
+            simulator: iPhone 16 Pro
           - name: Xcode 27 / iOS 27 SDK
             runner: xcode-27
             xcode: /Applications/Xcode.app
+            simulator: iPhone 17 Pro
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     steps:
@@ -45,5 +47,5 @@ jobs:
         run: >-
           xcodebuild test
           -scheme UIKitSwiftUI
-          -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest'
+          -destination 'platform=iOS Simulator,name=${{ matrix.simulator }},OS=latest'
           CODE_SIGNING_ALLOWED=NO
