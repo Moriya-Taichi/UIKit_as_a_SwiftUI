@@ -10,6 +10,15 @@ import UIKit
 /// only display the model: they translate `sections` into a diffable data
 /// source snapshot and forward selection callbacks back into the model.
 ///
+/// Items are their own diffable identifiers, so they must be unique across
+/// the entire model, not merely within a section, and section identifiers
+/// must be unique too. A duplicate is a programmer error: it trips an
+/// assertion in debug builds and can crash the data source when applied.
+/// Because the value is the identifier, an item whose value changes is a new
+/// identifier and reads as a delete plus an insert rather than an in-place
+/// update; carry stable identity inside the item type when in-place update
+/// semantics are needed.
+///
 /// Selection notifications are delivered through `events`, which is a
 /// single-consumer `AsyncStream`. Iterate it from exactly one task; a second
 /// consumer competes for elements instead of receiving its own copy.
@@ -43,6 +52,9 @@ public final class UIKitListModel<
     }
 
     /// The list data. Two-way: mutate it to update every attached view.
+    ///
+    /// Section identifiers must be unique, and items must be unique across
+    /// every section: each item is its own diffable identifier.
     public var sections: [Section]
 
     /// The items currently selected in an attached view. Read-only
@@ -90,6 +102,10 @@ public final class UIKitListModel<
     }
 
     func snapshot() -> NSDiffableDataSourceSnapshot<SectionID, Item> {
+        // Both the check and its message are `assert` autoclosures, so an
+        // optimized build never walks the data.
+        assert(identityViolation() == nil, identityViolation() ?? "")
+
         var snapshot = NSDiffableDataSourceSnapshot<SectionID, Item>()
         for section in sections {
             snapshot.appendSections([section.id])
@@ -97,13 +113,38 @@ public final class UIKitListModel<
         }
         return snapshot
     }
+
+    /// The first violation of the diffable identity contract, or `nil` when
+    /// the model satisfies it. Called only from `assert`.
+    private func identityViolation() -> String? {
+        var seenSections: Set<SectionID> = []
+        var seenItems: Set<Item> = []
+        for section in sections {
+            guard seenSections.insert(section.id).inserted else {
+                return """
+                    UIKitListModel requires unique section identifiers; \
+                    duplicate: \(section.id)
+                    """
+            }
+            for item in section.items {
+                guard seenItems.insert(item).inserted else {
+                    return """
+                        UIKitListModel requires globally unique items; \
+                        duplicate: \(item)
+                        """
+                }
+            }
+        }
+        return nil
+    }
 }
 
 @available(iOS 17.0, macCatalyst 17.0, *)
 public extension UIKitListModel where SectionID == Int {
     /// Creates a single-section model that owns the given items.
     ///
-    /// The items land in one section identified by `0`.
+    /// The items land in one section identified by `0`, and must be unique:
+    /// each item is its own diffable identifier.
     convenience init(items: [Item]) {
         self.init(sections: [Section(id: 0, items: items)])
     }
@@ -112,7 +153,9 @@ public extension UIKitListModel where SectionID == Int {
     ///
     /// Reading returns the first section's items, or an empty array when the
     /// model has no sections. Writing replaces `sections` with one section
-    /// identified by `0`.
+    /// identified by `0`. The items must be unique: each one is its own
+    /// diffable identifier, so a changed value reads as a delete plus an
+    /// insert rather than an in-place update.
     var items: [Item] {
         get { sections.first?.items ?? [] }
         set { sections = [Section(id: 0, items: newValue)] }

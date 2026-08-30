@@ -63,7 +63,10 @@ own, so callers never implement `UITableViewDataSource` or
 Item identity is value identity: an item whose value changes is a new
 identifier to the diff, so it appears as a removal and an insertion rather
 than an in-place update. Use an item type that carries only stable identity
-when a change must read as an update.
+when a change must read as an update. Because the items are the identifiers,
+they must be unique across the whole model rather than only within a section;
+a duplicate is a programmer error that trips an assertion in debug builds and
+can crash the data source when applied.
 
 The binding and closure initializers remain as the lighter alternative for
 cases that need no model, and the two modes never mix within one bridge

@@ -181,7 +181,7 @@ struct PhoneNumberField: View {
 
 `UIKitTextViewModel`と`UIKitSearchBarModel`も同じ形です。
 
-table viewとcollection viewでは`UIKitListModel`がsectionとitemを所有し、ブリッジがdiffable data sourceのsnapshotへ変換します。`UITableViewDataSource`や`UICollectionViewDataSource`を実装する必要はありません。`model.items`を書き換えれば表示が更新され、選択は`model.selectedItems`と`model.events`から届きます。itemの同一性は値の同一性なので、値が変わったitemはdiffにとって別のitemになります。
+table viewとcollection viewでは`UIKitListModel`がsectionとitemを所有し、ブリッジがdiffable data sourceのsnapshotへ変換します。`UITableViewDataSource`や`UICollectionViewDataSource`を実装する必要はありません。`model.items`を書き換えれば表示が更新され、選択は`model.selectedItems`と`model.events`から届きます。itemの同一性は値の同一性なので、値が変わったitemはdiffにとって別のitemになります。itemはそれ自身がdiffableの識別子であるため、section内だけでなくモデル全体で一意な値にしてください。重複はプログラマエラーで、debugビルドではassertionが発火します。in-placeな更新が必要な場合は、安定した識別子だけを持つitem型を使ってください。
 
 ```swift
 struct FruitList: View {
