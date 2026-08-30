@@ -40,10 +40,13 @@ the package is `UIKitViewCatalog.contentUnavailableView`, marked
 `@available(iOS 17.0, macCatalyst 17.0, *)`; everything else compiles for
 iOS 16.
 
-CI builds the same source with both ends of the supported SDK range:
+CI builds the same source with both ends of the supported SDK range and runs
+the tests on the minimum deployment target:
 
 - Xcode 16 / iOS 18 SDK
 - Xcode 27 / iOS 27 SDK
+- Xcode 16 with a downloaded iOS 16.4 simulator runtime, to run the tests on
+  the minimum deployment target
 
 References:
 

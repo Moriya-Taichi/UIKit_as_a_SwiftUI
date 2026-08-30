@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/Moriya-Taichi/UIKit_as_a_SwiftUI/actions/workflows/ci.yml/badge.svg)](https://github.com/Moriya-Taichi/UIKit_as_a_SwiftUI/actions/workflows/ci.yml)
 
-UIKitの任意のビューを、具体型を消さずにSwiftUIへ組み込むためのSwift Packageです。iOS 16を最小対象とし、Xcode 16のiOS 18 SDKとXcode 27のiOS 27 SDKで継続的にビルドします。
+UIKitの任意のビューを、具体型を消さずにSwiftUIへ組み込むためのSwift Packageです。iOS 16を最小対象とし、Xcode 16のiOS 18 SDKとXcode 27のiOS 27 SDKで継続的にビルドします。iOS 16.4シミュレータでのテストも実行します。
 
 ## 対応範囲
 
