@@ -2,49 +2,52 @@
 
 [![CI](https://github.com/Moriya-Taichi/UIKit_as_a_SwiftUI/actions/workflows/ci.yml/badge.svg)](https://github.com/Moriya-Taichi/UIKit_as_a_SwiftUI/actions/workflows/ci.yml)
 
-UIKitの任意のビューを、具体型を消さずにSwiftUIへ組み込むためのSwift Packageです。iOS 16を最小対象とし、Xcode 16のiOS 18 SDKとXcode 27のiOS 27 SDKで継続的にビルドします。iOS 16.4シミュレータでのテストも実行します。
+UIKit のビューやビューコントローラを、具体型を保ったまま SwiftUI に組み込むための Swift Package です。
 
-## 対応範囲
+ジェネリックなブリッジを中心に、SwiftUI の `Binding` に対応した標準コントロールや、状態とイベントをまとめて扱う Observable モデルを提供します。UIKit の標準ビューだけでなく、アプリ独自の `UIView` や新しい SDK で追加されたビューも、ライブラリの更新を待たずに利用できます。
 
-「UIKitを全て」は、UIKitモジュールに含まれる全シンボルへ個別ラッパーを作るという意味ではありません。`UIImage`、`UIFont`、delegate、layout constraintなどはビューではないため、`UIViewRepresentable`にはできません。このパッケージはUIKitの表示要素を次のように漏れなく扱います。
+## API の選び方
 
-| UIKitの型 | SwiftUIブリッジ |
-|---|---|
-| 任意の`UIView`サブクラス | `UIKitView<ViewType>` |
-| coordinatorが必要な`UIView` | `UIKitCoordinatedView<ViewType, Coordinator>` |
-| 任意の`UIControl`サブクラス | `UIKitControl<ControlType>` |
-| 任意の`UIViewController`サブクラス | `UIKitViewController<ControllerType>` |
-| coordinatorが必要な`UIViewController` | `UIKitCoordinatedViewController<ControllerType, Coordinator>` |
-| `UITextField`（モデル駆動） | `UIKitTextFieldModel` + `UIKitTextField(model:)` |
-| `UITextView`（モデル駆動） | `UIKitTextViewModel` + `UIKitTextView(model:)` |
-| `UISearchBar`（モデル駆動） | `UIKitSearchBarModel` + `UIKitSearchBar(model:)` |
-| `UITableView`のdata source | `UIKitListModel` + `UIKitTableView(model:)` |
-| `UICollectionView`のdata source | `UIKitListModel` + `UIKitCollectionView(model:)` |
+| 用途 | API |
+| --- | --- |
+| 任意の `UIView` を表示する | `UIKitView<ViewType>` |
+| デリゲートやデータソースを持つ `UIView` を表示する | `UIKitCoordinatedView<ViewType, Coordinator>` |
+| 任意の `UIControl` とイベントを接続する | `UIKitControl<ControlType>` |
+| 任意の `UIViewController` を表示する | `UIKitViewController<ControllerType>` |
+| コーディネータを持つ `UIViewController` を表示する | `UIKitCoordinatedViewController<ControllerType, Coordinator>` |
+| 標準コントロールを `Binding` と同期する | `UIKitSlider`、`UIKitSwitch`、`UIKitTextField` など |
+| テキスト入力をモデル駆動で扱う | `UIKitTextFieldModel`、`UIKitTextViewModel`、`UIKitSearchBarModel` |
+| リストをモデル駆動で扱う | `UIKitListModel` と `UIKitTableView` / `UIKitCollectionView` |
+| 特殊なイニシャライザを持つビューを生成する | `UIKitViewCatalog` |
 
-`UIViewController`は`UIViewRepresentable`で包むとcontainmentとappearance lifecycleが壊れるため、Appleの設計どおり`UIViewControllerRepresentable`を使います。
+`UIViewController` のブリッジには `UIViewControllerRepresentable` を使用します。`UIViewRepresentable` で包むことによる親子関係や表示ライフサイクルの破損を避け、UIKit 本来の動作を維持します。
 
-ジェネリックな中核APIなので、アプリ独自の`UIView`やiOS 27 SDKで追加された`UIView`も、ライブラリ側の更新なしで利用できます。Appleの公開SDK番号はiOS 18の次がiOS 26であり、iOS 19〜25という公開SDKはありません。
+## 対応環境
 
-## 必要環境
+- iOS 16 以降、または Mac Catalyst 16 以降
+- Swift 6 / Xcode 16 以降
+- Observable モデルを使う API は iOS 17 以降
+- iOS 27 固有の API を使う場合は Xcode 27
 
-- iOS 16以降、またはMac Catalyst 16以降
-- Observableモデル層（`*Model`、`*Deciding`、`UIKitTableView`、`UIKitCollectionView`）はiOS 17以降。それ以外はiOS 16から使えます
-- Swift 6 / Xcode 16以降
-- iOS 27固有APIを使う場合はXcode 27
+CI では Xcode 16 の iOS 18 SDK と Xcode 27 の iOS 27 SDK でビルドし、iOS 16.4 を含むシミュレータでテストしています。
 
 ## インストール
 
-Xcodeの **File > Add Package Dependencies** から次のURLを追加します。
+Xcode の **File > Add Package Dependencies** から、次の URL を追加します。
 
 ```text
 https://github.com/Moriya-Taichi/UIKit_as_a_SwiftUI.git
 ```
 
+利用するファイルでモジュールをインポートしてください。
+
 ```swift
 import UIKitSwiftUI
 ```
 
-## 任意のUIViewを使う
+## 基本的な使い方
+
+`UIKitView` の `make` で UIKit ビューを生成し、修飾子または `update` クロージャで状態を反映します。具体型は消去されないため、`UILabel` 固有のプロパティにもそのままアクセスできます。
 
 ```swift
 struct ProfileTitle: View {
@@ -70,18 +73,21 @@ struct ProfileTitle: View {
 }
 ```
 
-既存インスタンスも具体型を保ったまま包めます。
+外部で所有している既存インスタンスも、その具体型を保ったまま包めます。
 
 ```swift
 let label = UILabel()
 let swiftUIView: UIKitView<UILabel> = UIKitBridge.view(label)
 ```
 
-## delegateやdataSourceを使う
+### デリゲートやデータソースを使う
+
+デリゲートやデータソースなど、ビューと同じ期間だけ保持するオブジェクトが必要な場合は `UIKitCoordinatedView` を使います。
 
 ```swift
 final class PickerCoordinator: NSObject, UIPickerViewDataSource {
     func numberOfComponents(in pickerView: UIPickerView) -> Int { 1 }
+
     func pickerView(
         _ pickerView: UIPickerView,
         numberOfRowsInComponent component: Int
@@ -103,49 +109,47 @@ let picker = UIKitCoordinatedView(
 )
 ```
 
-## SwiftUI Binding付きコントロール
+## 標準コントロールを Binding と同期する
+
+UIKit の標準コントロールを SwiftUI の状態と双方向に同期するラッパーを用意しています。
 
 ```swift
 struct Controls: View {
     @State private var volume: Float = 0.5
-    @State private var enabled = true
+    @State private var isEnabled = true
     @State private var query = ""
 
     var body: some View {
         VStack {
             UIKitSlider(value: $volume)
-            UIKitSwitch(isOn: $enabled)
+            UIKitSwitch(isOn: $isEnabled)
             UIKitTextField("Search", text: $query)
         }
     }
 }
 ```
 
-次の型は`Binding`とUIKitイベントの双方向同期を標準で備えています。
+利用できるラッパーは次のとおりです。
 
-- `UIKitSlider`
-- `UIKitSwitch`
-- `UIKitStepper`
-- `UIKitPageControl`
-- `UIKitSegmentedControl`
-- `UIKitDatePicker`
-- `UIKitColorWell`
-- `UIKitTextField`
-- `UIKitTextView`
-- `UIKitSearchBar`
+- `UIKitSlider`、`UIKitSwitch`、`UIKitStepper`
+- `UIKitPageControl`、`UIKitSegmentedControl`
+- `UIKitDatePicker`、`UIKitColorWell`
+- `UIKitTextField`、`UIKitTextView`、`UIKitSearchBar`
 - `UIKitButton`
 
-独自の`UIControl`には`UIKitControl`を使います。`UIAction`は一度だけ登録され、SwiftUIの更新時に重複せず、dismantle時に解除されます。
+独自の `UIControl` には `UIKitControl` を使います。内部の `UIAction` は一度だけ登録され、SwiftUI の更新時に重複せず、ビューの破棄時に解除されます。
 
-## Observableモデルで使う
+## Observable モデルで状態とイベントを扱う
 
-このモデル層（`*Model`、`*Deciding`、`UIKitTableView`、`UIKitCollectionView`、および各ブリッジの`init(model:)`）は`@Observable`を使うためiOS 17以降が必要です。パッケージの最小対象はiOS 16のままで、それ以外のAPIはiOS 16から使えるので、以下の例は`@available`や`if #available`のガード下で利用してください。
+Observable モデルを使う API は iOS 17 以降で利用できます。`@Observable` なモデルがデータと判断ロジックを所有し、ブリッジはモデルと UIKit インスタンスの同期に専念します。単純な双方向同期には `Binding`、入力可否の判断やイベント購読までまとめたい場合にはモデルが適しています。
 
-WebKitのSwiftUI版`WebPage`と同じ発想で、`@Observable`なモデルがデータとポリシーを所有し、ビューは表示に徹します。テキスト、フォーカス、選択状態、そして「許可するかどうか」の判断はモデル側にあり、ブリッジはモデルとUIKitインスタンスを同期するだけです。
+対象となるのは、`*Model`、`*Deciding`、`UIKitTableView`、`UIKitCollectionView`、および各ブリッジの `init(model:)` です。iOS 16 も対象に含むアプリでは、`@available` または `if #available` で利用箇所を保護してください。
 
-判断が必要なdelegateメソッドは`UIKitTextFieldDeciding`のような`*Deciding`プロトコルになります。全ての要件に許可側のデフォルト実装があるので、必要な判断だけを実装します。deciderはモデルの初期化時に渡してモデルが保持し、ブリッジがdeciderに直接触れることはありません。
+### テキスト入力
 
-通知的なdelegateコールバックは`model.events`という単一の`AsyncStream`に流れます。**単一コンシューマ**なので、購読するtaskは1つだけにしてください。2つ目のコンシューマは自分用のコピーを受け取るのではなく、要素を奪い合います。
+入力可否を判断するデリゲートメソッドは、`UIKitTextFieldDeciding` などの `*Deciding` プロトコルとして定義されています。各要件には許可するデフォルト実装があるため、必要な判断だけを実装できます。
+
+通知型のデリゲートコールバックは、モデルの `events` から `AsyncStream` として受け取ります。ストリームは単一コンシューマ向けなので、購読する `Task` は 1 つにしてください。複数の `Task` から購読すると、同じイベントのコピーを受け取るのではなく、イベントを奪い合います。
 
 ```swift
 struct PhoneNumberField: View {
@@ -179,9 +183,11 @@ struct PhoneNumberField: View {
 }
 ```
 
-`UIKitTextViewModel`と`UIKitSearchBarModel`も同じ形です。
+`UIKitTextViewModel` と `UIKitSearchBarModel` も同じ構成で利用できます。
 
-table viewとcollection viewでは`UIKitListModel`がsectionとitemを所有し、ブリッジがdiffable data sourceのsnapshotへ変換します。`UITableViewDataSource`や`UICollectionViewDataSource`を実装する必要はありません。`model.items`を書き換えれば表示が更新され、選択は`model.selectedItems`と`model.events`から届きます。itemの同一性は値の同一性なので、値が変わったitemはdiffにとって別のitemになります。itemはそれ自身がdiffableの識別子であるため、section内だけでなくモデル全体で一意な値にしてください。重複はプログラマエラーで、debugビルドではassertionが発火します。in-placeな更新が必要な場合は、安定した識別子だけを持つitem型を使ってください。
+### テーブルビューとコレクションビュー
+
+`UIKitListModel` がセクション、項目、選択状態を所有し、`UIKitTableView` と `UIKitCollectionView` が diffable data source のスナップショットへ変換します。`UITableViewDataSource` や `UICollectionViewDataSource` を実装する必要はありません。
 
 ```swift
 struct FruitList: View {
@@ -200,9 +206,11 @@ struct FruitList: View {
                     return configuration
                 }
             )
+
             Button("追加") {
                 model.items.append("cherry")
             }
+
             Text("選択中: \(model.selectedItems.joined(separator: ", "))")
         }
         .task {
@@ -216,15 +224,26 @@ struct FruitList: View {
 }
 ```
 
-`UIKitCollectionView(model:layout:content:)`も同じ`UIKitListModel`をそのまま使えます。
+`UIKitCollectionView(model:layout:content:)` でも同じ `UIKitListModel` を利用できます。
 
-既存の`Binding`やクロージャを使うAPIはそのまま利用できます。モデルを使わない軽い用途にはそちらが向いています。ただし1つのブリッジインスタンスで両方が混ざることはなく、`model:`で作ったインスタンスは`Binding`の引数を無視します。
+項目自体が diffable data source の識別子になるため、すべてのセクションを通して一意な値にしてください。値が変化した項目は別の項目とみなされます。表示内容をその場で更新したい場合は、安定した識別子を持つ項目型を使用してください。重複はプログラマエラーとして扱われ、デバッグビルドではアサーションが発生します。
 
-## 初期化が特殊なビュー
+既存の `Binding` やクロージャを使う API も引き続き利用できます。ただし、1 つのブリッジでモデル方式と `Binding` 方式を併用することはできません。`model:` で生成したインスタンスでは、`Binding` 用の引数は使われません。
 
-`UIKitViewCatalog`には、collection view、table view、calendar view、visual effect view、各種barなどの型付きfactoryがあります。catalogにないビューも`UIKitView(make:update:)`で同じように扱えます。
+## 初期化が特殊なビューを使う
 
-`UIKitViewCatalog.contentUnavailableView`はiOS 17以降が必要なため、`@available`や`if #available`のガード下で使用してください。
+`UIKitViewCatalog` は、コレクションビュー、テーブルビュー、カレンダービュー、ビジュアルエフェクトビュー、各種バーなど、イニシャライザが統一されていないビューの型付きファクトリを提供します。カタログにないビューも `UIKitView(make:update:)` で利用できます。
+
+```swift
+UIKitViewCatalog.collectionView {
+    UICollectionViewCompositionalLayout { _, _ in
+        // section を返す
+        nil
+    }
+}
+```
+
+`UIKitViewCatalog.contentUnavailableView` は iOS 17 以降で利用できます。
 
 ```swift
 struct EmptyResults: View {
@@ -240,22 +259,15 @@ struct EmptyResults: View {
 }
 ```
 
-```swift
-UIKitViewCatalog.collectionView {
-    UICollectionViewCompositionalLayout { _, _ in
-        // sectionを返す
-        nil
-    }
-}
-```
+## 対応範囲とライフサイクル
 
-## ライフサイクルと性能
+このパッケージが扱う「UIKit のすべて」は、UIKit モジュールの全シンボルに個別のラッパーを用意するという意味ではありません。`UIImage`、`UIFont`、デリゲート、レイアウト制約など、表示要素ではない型は `UIViewRepresentable` の対象外です。代わりに、任意の `UIView`、`UIControl`、`UIViewController` をジェネリックな API で扱います。
 
-- UIKitインスタンスの生成は`make`だけで行い、SwiftUIの再評価では再生成しません。
-- 状態反映は`update`で行い、delegateやtargetはcoordinatorに保持します。
-- text inputは値が変わったときだけUIKitへ書き戻し、選択範囲の不要なリセットを避けます。
-- `AnyView`や`UIView`への型消去を行いません。
-- `sizeThatFits`またはAuto Layoutによる測定を選べます。
+- UIKit インスタンスは `make` で生成し、SwiftUI の再評価時には再生成しません。
+- 状態は `update` で反映し、デリゲートやターゲットはコーディネータが保持します。
+- テキスト入力は値が変わった場合だけ UIKit へ書き戻し、選択範囲の不要なリセットを避けます。
+- `AnyView` や `UIView` への型消去は行いません。
+- サイズ計算には `sizeThatFits` または Auto Layout を利用できます。
 
 ## License
 
