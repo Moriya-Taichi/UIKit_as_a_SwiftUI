@@ -19,6 +19,7 @@ public struct UIKitControl<ControlType: UIControl>: UIViewRepresentable {
 
     @MainActor
     public final class Coordinator {
+        fileprivate let environment = UIKitEnvironmentState()
         fileprivate var handler: HandleEvent
         fileprivate var action: UIAction?
         fileprivate weak var control: ControlType?
@@ -56,7 +57,7 @@ public struct UIKitControl<ControlType: UIControl>: UIViewRepresentable {
 
     private let make: MakeControl
     private let events: UIControl.Event
-    private let update: UpdateControl
+    private var update: UpdateControl
     private let onEvent: HandleEvent
     private let measure: MeasureControl?
 
@@ -81,7 +82,9 @@ public struct UIKitControl<ControlType: UIControl>: UIViewRepresentable {
     public func makeUIView(context: Context) -> ControlType {
         let control = make()
         context.coordinator.install(on: control, for: events)
-        update(control, context)
+        context.coordinator.environment.update(control, environment: context.environment) {
+            update($0, context)
+        }
         return control
     }
 
@@ -90,13 +93,16 @@ public struct UIKitControl<ControlType: UIControl>: UIViewRepresentable {
         if context.coordinator.events != events {
             context.coordinator.install(on: uiView, for: events)
         }
-        update(uiView, context)
+        context.coordinator.environment.update(uiView, environment: context.environment) {
+            update($0, context)
+        }
     }
 
     public static func dismantleUIView(
         _ uiView: ControlType,
         coordinator: Coordinator
     ) {
+        coordinator.environment.dismantle()
         coordinator.uninstall()
     }
 
@@ -106,5 +112,22 @@ public struct UIKitControl<ControlType: UIControl>: UIViewRepresentable {
         context: Context
     ) -> CGSize? {
         measure?(proposal, uiView, context)
+    }
+}
+
+extension UIKitControl: UIKitViewConfiguring {
+    public typealias UIKitViewType = ControlType
+
+    /// Appends UIKit configuration to each update.
+    public func configureUIKit(
+        _ body: @escaping @MainActor (ControlType) -> Void
+    ) -> Self {
+        var copy = self
+        let previous = update
+        copy.update = { view, context in
+            previous(view, context)
+            body(view)
+        }
+        return copy
     }
 }

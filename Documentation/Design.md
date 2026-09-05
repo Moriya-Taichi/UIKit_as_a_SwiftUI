@@ -30,6 +30,65 @@ bridge rather than representables themselves.
 
 Every bridge is isolated to `MainActor`, matching UIKit's threading model.
 
+## Declarative configuration and standard environment
+
+`UIKitViewConfiguring` exposes `configureUIKit` while retaining the concrete
+UIKit view type. Typed modifiers such as `textFieldClearButtonMode` are
+constrained to the UIKit classes that support the property. They return the
+same bridge type and must precede general SwiftUI view modifiers.
+
+UIView bridges apply environment values on every update. SwiftUI's `isEnabled`
+and `isScrollEnabled` values are authoritative after UIKit configuration, so
+removing an override does not leave a control permanently disabled. Use
+`disabled` and `scrollDisabled` for these settings instead of writing the
+corresponding UIKit properties. This also matches OS versions on which SwiftUI
+assigns `UIControl.isEnabled` after `updateUIView` returns. Labels default to
+SwiftUI's unlimited line count;
+`lineLimit` provides the inherited count, followed by explicit UIKit label
+configuration. Controller bridges do not recursively configure their children.
+
+`onUIKitSubmit` is an environment modifier for both text-field and search-bar
+modes. It accumulates notifications from ancestors to descendants and does not
+read `model.events`. Text-field policy rejection suppresses both the model's
+submission event and the modifier notification. It is independent from
+SwiftUI's `onSubmit` and `submitScope`.
+
+An owned refresh coordinator connects `EnvironmentValues.refresh` to a
+`UIRefreshControl`, executes at most one task at a time, and ends the indicator
+when the action completes. Removal or teardown cancels the task, disconnects
+targets, and restores the refresh control it replaced if still installed.
+Generation checks prevent a cancelled task from clearing a newer task's state.
+
+## SwiftUI rows, identifiers, and selection
+
+The data initializers of `UIKitTableView` and `UIKitCollectionView` take a
+collection, an `Identifiable` ID or an explicit `id:` key path, an optional
+selection binding, and a `@ViewBuilder` content closure. These APIs require
+iOS 17, like the existing list bridges. Only IDs need `Hashable & Sendable`;
+display elements remain separate values. Duplicate IDs are rejected in every
+build before creating a diffable snapshot.
+
+A single-section snapshot indexes the current elements by ID. Every persistent
+ID is reconfigured when SwiftUI updates the bridge, including changes to
+captured state or environment with otherwise unchanged data. Cells use
+`UIHostingConfiguration` with the row's ID and the parent environment; no
+`AnyView` is required. Selection is restored by ID after snapshot application,
+without invoking delegate notifications or writing back to bindings during
+`updateUIView`.
+
+Selection bindings are read while constructing the representable value, so
+changes participate in SwiftUI dependency tracking. Delegate events update the
+current binding. An absent ID stays in the caller's binding and is selected
+again when it reappears; filtering does not discard application state. The
+caller removes IDs that should be forgotten. Omitting selection disables row
+selection. UIKit-cell/model initializers keep their existing delegate behavior.
+
+The `UITableView` style and collection-layout factory remain creation-time
+inputs. Use a new SwiftUI identity when those creation-time inputs must change.
+`animatesDifferences` also respects `Transaction.disablesAnimations`.
+
+See [Declarative API migration](DeclarativeAPI.md) for call-site examples.
+
 ## Observable models, deciders, and event streams
 
 Text input and list data follow the split WebKit uses for its SwiftUI
@@ -60,7 +119,7 @@ deinitializes.
 `NSDiffableDataSourceSnapshot` and apply it to a diffable data source they
 own, so callers never implement `UITableViewDataSource` or
 `UICollectionViewDataSource`; they only describe how an item becomes a cell.
-Item identity is value identity: an item whose value changes is a new
+In these legacy model initializers, item identity is value identity: an item whose value changes is a new
 identifier to the diff, so it appears as a removal and an insertion rather
 than an in-place update. Use an item type that carries only stable identity
 when a change must read as an update. Because the items are the identifiers,
@@ -71,7 +130,8 @@ can crash the data source when applied.
 The binding and closure initializers remain as the lighter alternative for
 cases that need no model, and the two modes never mix within one bridge
 instance. An instance created with `model:` ignores the binding parameters and
-routes every delegate callback through the model; an instance created with
+routes policy decisions and model events through the model; environment-based
+`onUIKitSubmit` notifications remain available in both modes; an instance created with
 bindings never touches a model.
 
 The whole layer is built on `@Observable`, so the model types, the `*Deciding`

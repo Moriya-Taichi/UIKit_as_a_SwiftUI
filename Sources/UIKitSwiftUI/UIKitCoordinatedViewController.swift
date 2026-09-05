@@ -50,7 +50,7 @@ public struct UIKitCoordinatedViewController<
 
     private let makeCoordinatorValue: @MainActor () -> CoordinatorValue
     private let make: MakeController
-    private let update: UpdateController
+    private var update: UpdateController
     private let dismantle: DismantleController
     private let measure: MeasureController?
 
@@ -108,3 +108,18 @@ public struct UIKitCoordinatedViewController<
     }
 }
 
+
+public extension UIKitCoordinatedViewController {
+    /// Appends UIKit controller configuration to each update.
+    func configureUIKit(
+        _ body: @escaping @MainActor (ControllerType) -> Void
+    ) -> Self {
+        var copy = self
+        let previous = update
+        copy.update = { controller, coordinator, context in
+            previous(controller, coordinator, context)
+            body(controller)
+        }
+        return copy
+    }
+}

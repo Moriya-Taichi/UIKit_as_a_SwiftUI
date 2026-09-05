@@ -1,15 +1,12 @@
 import SwiftUI
 import UIKit
 
-/// A UIKit collection view whose data comes from an observable
-/// `UIKitListModel`.
+/// A UIKit collection view displaying SwiftUI rows or UIKit cells.
 ///
-/// The model owns the sections, the items, and the selection; the bridge owns
-/// a `UICollectionViewDiffableDataSource` built from the model's snapshot.
-/// Callers never implement `UICollectionViewDataSource`: they only describe
-/// how an item configures a cell. The cell registration is created exactly
-/// once per collection view, while the configuration closure is refreshed on
-/// every update so it may capture current SwiftUI state.
+/// Data initializers use stable IDs and optional selection bindings; row
+/// content is built with `UIHostingConfiguration`. Model initializers retain
+/// the existing `UIKitListModel` and UIKit cell-provider API. The bridge owns
+/// its diffable data source and forwards selection through the selected mode.
 @available(iOS 17.0, macCatalyst 17.0, *)
 @MainActor
 public struct UIKitCollectionView<
@@ -34,14 +31,19 @@ public struct UIKitCollectionView<
         Item
     ) -> UICollectionViewCell
 
-    private let model: UIKitListModel<SectionID, Item>
+    private let model: UIKitListModel<SectionID, Item>?
     // Built while SwiftUI evaluates the caller's body so reading `sections`
     // establishes the observation dependency that recreates this value.
     private let snapshot: NSDiffableDataSourceSnapshot<SectionID, Item>
     private let layout: @MainActor () -> UICollectionViewLayout
     private let animatesDifferences: Bool
-    private let configure: @MainActor (UICollectionView) -> Void
-    private let updateCell: CellUpdate
+    private var configure: @MainActor (UICollectionView) -> Void
+    fileprivate typealias ContextualCellUpdate = @MainActor (
+        UICollectionViewCell, IndexPath, Item, EnvironmentValues
+    ) -> Void
+    private let updateCell: ContextualCellUpdate
+    private var selection: UIKitListSelection<Item> = .unmanaged
+    private var selectedIDs: Set<Item>?
     private let makeCellProvider: @MainActor (Coordinator) -> CellProvider
 
     /// Creates a collection view that dequeues cells of the given type.
@@ -59,14 +61,34 @@ public struct UIKitCollectionView<
         configure: @escaping @MainActor (UICollectionView) -> Void = { _ in },
         cell: @escaping @MainActor (Cell, IndexPath, Item) -> Void
     ) {
+        self.init(
+            snapshot: model.snapshot(), model: model, selection: .unmanaged,
+            layout: layout, animatesDifferences: animatesDifferences,
+            cellType: cellType, configure: configure,
+            cell: { cellView, indexPath, item, _ in cell(cellView, indexPath, item) }
+        )
+    }
+
+    private init<Cell: UICollectionViewCell>(
+        snapshot: NSDiffableDataSourceSnapshot<SectionID, Item>,
+        model: UIKitListModel<SectionID, Item>?,
+        selection: UIKitListSelection<Item>,
+        layout: @escaping @MainActor () -> UICollectionViewLayout,
+        animatesDifferences: Bool,
+        cellType: Cell.Type,
+        configure: @escaping @MainActor (UICollectionView) -> Void,
+        cell: @escaping @MainActor (Cell, IndexPath, Item, EnvironmentValues) -> Void
+    ) {
         self.model = model
-        snapshot = model.snapshot()
+        self.snapshot = snapshot
+        self.selection = selection
+        selectedIDs = selection.ids
         self.layout = layout
         self.animatesDifferences = animatesDifferences
         self.configure = configure
-        updateCell = { dequeued, indexPath, item in
+        updateCell = { dequeued, indexPath, item, environment in
             guard let typed = dequeued as? Cell else { return }
-            cell(typed, indexPath, item)
+            cell(typed, indexPath, item, environment)
         }
         makeCellProvider = { coordinator in
             // The registration is created here, inside the provider that
@@ -77,7 +99,7 @@ public struct UIKitCollectionView<
                 // supported SDK, and it only runs on the main actor.
                 MainActor.assumeIsolated {
                     guard let coordinator else { return }
-                    coordinator.updateCell(dequeued, indexPath, item)
+                    coordinator.updateCell(dequeued, indexPath, item, coordinator.environmentValues)
                 }
             }
             return { collectionView, indexPath, item in
@@ -120,14 +142,18 @@ public struct UIKitCollectionView<
     @MainActor
     public final class Coordinator: NSObject, UICollectionViewDelegate {
         fileprivate var model: UIKitListModel<SectionID, Item>?
-        fileprivate var updateCell: CellUpdate
+        fileprivate let environment = UIKitEnvironmentState()
+        fileprivate var environmentValues = EnvironmentValues()
+        fileprivate var selection: UIKitListSelection<Item> = .unmanaged
+        fileprivate var selectedIDs: Set<Item>?
+        fileprivate var updateCell: ContextualCellUpdate
         fileprivate var cellProvider: CellProvider?
         fileprivate var dataSource:
             UICollectionViewDiffableDataSource<SectionID, Item>?
 
         fileprivate init(
             model: UIKitListModel<SectionID, Item>?,
-            updateCell: @escaping CellUpdate
+            updateCell: @escaping ContextualCellUpdate
         ) {
             self.model = model
             self.updateCell = updateCell
@@ -141,6 +167,8 @@ public struct UIKitCollectionView<
                 return
             }
             model?.handleSelected(item)
+            selection.select(item)
+            selectedIDs = selection.ids
         }
 
         public func collectionView(
@@ -151,6 +179,29 @@ public struct UIKitCollectionView<
                 return
             }
             model?.handleDeselected(item)
+            selection.deselect(item)
+            selectedIDs = selection.ids
+        }
+
+        fileprivate func configureSelection(_ collectionView: UICollectionView) {
+            if let allowsSelection = selection.allowsSelection {
+                collectionView.allowsSelection = allowsSelection
+            }
+            if let multiple = selection.allowsMultipleSelection {
+                collectionView.allowsMultipleSelection = multiple
+            }
+        }
+
+        fileprivate func synchronizeSelection(_ collectionView: UICollectionView) {
+            guard let selectedIDs, let dataSource else { return }
+            let desired = Set(selectedIDs.compactMap { dataSource.indexPath(for: $0) })
+            let current = Set(collectionView.indexPathsForSelectedItems ?? [])
+            for indexPath in current.subtracting(desired) {
+                collectionView.deselectItem(at: indexPath, animated: false)
+            }
+            for indexPath in desired.subtracting(current) {
+                collectionView.selectItem(at: indexPath, animated: false, scrollPosition: [])
+            }
         }
     }
 
@@ -167,6 +218,9 @@ public struct UIKitCollectionView<
         let coordinator = context.coordinator
         coordinator.model = model
         coordinator.updateCell = updateCell
+        coordinator.environmentValues = context.environment
+        coordinator.selection = selection
+        coordinator.selectedIDs = selectedIDs
         // Built once per collection view, so the cell registration it owns is
         // never recreated by an update.
         coordinator.cellProvider = makeCellProvider(coordinator)
@@ -190,9 +244,15 @@ public struct UIKitCollectionView<
         }
         coordinator.dataSource = dataSource
 
+        coordinator.environment.update(collectionView, environment: context.environment, configure: configure)
         collectionView.delegate = coordinator
-        configure(collectionView)
-        dataSource.apply(snapshot, animatingDifferences: false)
+        collectionView.dataSource = dataSource
+        coordinator.configureSelection(collectionView)
+        dataSource.apply(snapshot, animatingDifferences: false) { [weak coordinator, weak collectionView] in
+            MainActor.assumeIsolated {
+                if let collectionView { coordinator?.synchronizeSelection(collectionView) }
+            }
+        }
         return collectionView
     }
 
@@ -200,19 +260,28 @@ public struct UIKitCollectionView<
         let coordinator = context.coordinator
         coordinator.model = model
         coordinator.updateCell = updateCell
-        configure(uiView)
+        coordinator.environmentValues = context.environment
+        coordinator.selection = selection
+        coordinator.selectedIDs = selectedIDs
+        coordinator.environment.update(uiView, environment: context.environment, configure: configure)
+        coordinator.configureSelection(uiView)
         if uiView.delegate !== coordinator {
             uiView.delegate = coordinator
         }
 
         guard let dataSource = coordinator.dataSource else { return }
+        uiView.dataSource = dataSource
         dataSource.apply(
             Self.updateSnapshot(
                 current: dataSource.snapshot(),
                 updated: snapshot
             ),
-            animatingDifferences: animatesDifferences
-        )
+            animatingDifferences: animatesDifferences && !context.transaction.disablesAnimations
+        ) { [weak coordinator, weak uiView] in
+            MainActor.assumeIsolated {
+                if let uiView { coordinator?.synchronizeSelection(uiView) }
+            }
+        }
     }
 
     public static func dismantleUIView(
@@ -222,6 +291,11 @@ public struct UIKitCollectionView<
         if uiView.delegate === coordinator {
             uiView.delegate = nil
         }
+        coordinator.environment.dismantle()
+        if uiView.dataSource === coordinator.dataSource {
+            uiView.dataSource = nil
+        }
+        coordinator.dataSource = nil
         coordinator.model = nil
     }
 
@@ -244,5 +318,121 @@ public struct UIKitCollectionView<
             result.reconfigureItems(persisting)
         }
         return result
+    }
+}
+
+@available(iOS 17.0, macCatalyst 17.0, *)
+extension UIKitCollectionView: UIKitViewConfiguring {
+    public typealias UIKitViewType = UICollectionView
+
+    /// Appends UIKit configuration to each update.
+    public func configureUIKit(_ body: @escaping @MainActor (UICollectionView) -> Void) -> Self {
+        var copy = self
+        let previous = configure
+        copy.configure = { view in
+            previous(view)
+            body(view)
+        }
+        return copy
+    }
+}
+
+@available(iOS 17.0, macCatalyst 17.0, *)
+extension UIKitCollectionView where SectionID == Int {
+    private init<Element, Content: View>(
+        identified data: UIKitIdentifiedData<Element, Item>,
+        selection: UIKitListSelection<Item>,
+        layout: @escaping @MainActor () -> UICollectionViewLayout,
+        animatesDifferences: Bool,
+        @ViewBuilder content: @escaping @MainActor (Element) -> Content
+    ) {
+        self.init(
+            snapshot: data.snapshot, model: nil, selection: selection,
+            layout: layout, animatesDifferences: animatesDifferences,
+            cellType: UICollectionViewListCell.self, configure: { _ in },
+            cell: { cell, _, id, environment in
+                if let element = data.elements[id] {
+                    cell.contentConfiguration = UIHostingConfiguration {
+                        content(element).id(id).environment(\.self, environment)
+                    }
+                } else {
+                    cell.contentConfiguration = nil
+                }
+            }
+        )
+    }
+}
+
+@available(iOS 17.0, macCatalyst 17.0, *)
+public extension UIKitCollectionView where SectionID == Int {
+
+    /// Creates SwiftUI rows with stable IDs and optional single selection.
+    ///
+    /// IDs must be unique. The binding may retain IDs absent from the data;
+    /// only present IDs are selected, so filtering does not discard selection.
+    init<Data: RandomAccessCollection, Content: View>(
+        _ data: Data,
+        id: KeyPath<Data.Element, Item>,
+        selection: Binding<Item?>? = nil,
+        layout: @escaping @MainActor () -> UICollectionViewLayout,
+        animatesDifferences: Bool = true,
+        @ViewBuilder content: @escaping @MainActor (Data.Element) -> Content
+    ) {
+        self.init(
+            identified: UIKitIdentifiedData(data, id: id), selection: selection.map { .single($0) } ?? .none,
+            layout: layout, animatesDifferences: animatesDifferences, content: content
+        )
+    }
+
+    /// Creates SwiftUI rows with stable IDs and multiple selection.
+    ///
+    /// IDs must be unique. The binding may retain IDs absent from the data;
+    /// only present IDs are selected, so filtering does not discard selection.
+    init<Data: RandomAccessCollection, Content: View>(
+        _ data: Data,
+        id: KeyPath<Data.Element, Item>,
+        selection: Binding<Set<Item>>,
+        layout: @escaping @MainActor () -> UICollectionViewLayout,
+        animatesDifferences: Bool = true,
+        @ViewBuilder content: @escaping @MainActor (Data.Element) -> Content
+    ) {
+        self.init(
+            identified: UIKitIdentifiedData(data, id: id), selection: .multiple(selection),
+            layout: layout, animatesDifferences: animatesDifferences, content: content
+        )
+    }
+
+    /// Creates SwiftUI rows with stable IDs and optional single selection.
+    ///
+    /// IDs must be unique. The binding may retain IDs absent from the data;
+    /// only present IDs are selected, so filtering does not discard selection.
+    init<Data: RandomAccessCollection, Content: View>(
+        _ data: Data,
+        selection: Binding<Item?>? = nil,
+        layout: @escaping @MainActor () -> UICollectionViewLayout,
+        animatesDifferences: Bool = true,
+        @ViewBuilder content: @escaping @MainActor (Data.Element) -> Content
+    ) where Data.Element: Identifiable, Data.Element.ID == Item {
+        self.init(
+            data, id: \.id, selection: selection,
+            layout: layout, animatesDifferences: animatesDifferences, content: content
+        )
+    }
+
+    /// Creates SwiftUI rows with stable IDs and multiple selection.
+    ///
+    /// IDs must be unique. The binding may retain IDs absent from the data;
+    /// only present IDs are selected, so filtering does not discard selection.
+    init<Data: RandomAccessCollection, Content: View>(
+        _ data: Data,
+        selection: Binding<Set<Item>>,
+        layout: @escaping @MainActor () -> UICollectionViewLayout,
+        animatesDifferences: Bool = true,
+        @ViewBuilder content: @escaping @MainActor (Data.Element) -> Content
+    ) where Data.Element: Identifiable, Data.Element.ID == Item {
+        self.init(
+            data, id: \.id, selection: selection,
+            layout: layout, animatesDifferences: animatesDifferences, content: content
+        )
     }
 }

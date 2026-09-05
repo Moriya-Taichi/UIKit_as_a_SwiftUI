@@ -20,7 +20,9 @@ public struct UIKitView<ViewType: UIView>: UIViewRepresentable {
 
     /// The coordinator is public so `UIKitView` remains usable across module
     /// boundaries. Its lifecycle details intentionally stay encapsulated.
+    @MainActor
     public final class Coordinator {
+        fileprivate let environment = UIKitEnvironmentState()
         fileprivate let dismantle: DismantleUIView
 
         fileprivate init(dismantle: @escaping DismantleUIView) {
@@ -92,17 +94,22 @@ public struct UIKitView<ViewType: UIView>: UIViewRepresentable {
     }
 
     public func makeUIView(context: Context) -> ViewType {
-        make(context)
+        let view = make(context)
+        context.coordinator.environment.update(view, environment: context.environment) { _ in }
+        return view
     }
 
     public func updateUIView(_ uiView: ViewType, context: Context) {
-        update(uiView, context)
+        context.coordinator.environment.update(uiView, environment: context.environment) {
+            update($0, context)
+        }
     }
 
     public static func dismantleUIView(
         _ uiView: ViewType,
         coordinator: Coordinator
     ) {
+        coordinator.environment.dismantle()
         coordinator.dismantle(uiView)
     }
 
@@ -167,5 +174,37 @@ public extension UIKitView {
             },
             sizeThatFits: measure
         )
+    }
+}
+
+extension UIKitView: UIKitViewConfiguring {
+    public typealias UIKitViewType = ViewType
+
+    /// Appends UIKit configuration to each update.
+    public func configureUIKit(
+        _ body: @escaping @MainActor (ViewType) -> Void
+    ) -> Self {
+        configure(body)
+    }
+}
+
+public extension UIKitView where ViewType: UILabel {
+    /// Sets label text that follows SwiftUI's environment locale.
+    func text(localized resource: LocalizedStringResource) -> Self {
+        Self(
+            make: make,
+            update: { view, context in
+                update(view, context)
+                view.text = UIKitDisplayText.localized(resource)
+                    .resolve(in: context.environment.locale)
+            },
+            dismantle: dismantle,
+            sizeThatFits: measure
+        )
+    }
+
+    /// Sets label text without localization.
+    func text(verbatim text: String) -> Self {
+        self.text(text)
     }
 }
