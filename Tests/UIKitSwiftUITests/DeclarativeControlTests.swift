@@ -177,6 +177,24 @@ final class DeclarativeControlTests: XCTestCase {
         XCTAssertTrue(delivered)
     }
 
+    func testSubmitModifiersAccumulateFromParentToChild() async throws {
+        let state = ControlState()
+        let host = BridgeTestHost(
+            VStack {
+                UIKitTextField(text: .constant(""))
+                    .configureUIKit { $0.accessibilityIdentifier = "nested-submit" }
+                    .onUIKitSubmit { state.submitted.append(2) }
+            }
+            .onUIKitSubmit { state.submitted.append(1) }
+        )
+        defer { host.close() }
+        let mounted = await waitForBridge { host.view(UITextField.self, id: "nested-submit") != nil }
+        XCTAssertTrue(mounted)
+        let field = try XCTUnwrap(host.view(UITextField.self, id: "nested-submit"))
+        XCTAssertEqual(field.delegate?.textFieldShouldReturn?(field), true)
+        XCTAssertEqual(state.submitted, [1, 2])
+    }
+
     func testLegacyAndModernDatePickerArgumentsRemainUnambiguous() {
         _ = UIKitDatePicker(selection: .constant(Date()))
         _ = UIKitDatePicker(selection: .constant(Date()), displayedComponents: .date)
