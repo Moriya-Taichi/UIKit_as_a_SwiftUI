@@ -1,15 +1,12 @@
 import SwiftUI
 import UIKit
 
-/// A UIKit collection view whose data comes from an observable
-/// `UIKitListModel`.
+/// A UIKit collection view displaying SwiftUI rows or UIKit cells.
 ///
-/// The model owns the sections, the items, and the selection; the bridge owns
-/// a `UICollectionViewDiffableDataSource` built from the model's snapshot.
-/// Callers never implement `UICollectionViewDataSource`: they only describe
-/// how an item configures a cell. The cell registration is created exactly
-/// once per collection view, while the configuration closure is refreshed on
-/// every update so it may capture current SwiftUI state.
+/// Data initializers use stable IDs and optional selection bindings; row
+/// content is built with `UIHostingConfiguration`. Model initializers retain
+/// the existing `UIKitListModel` and UIKit cell-provider API. The bridge owns
+/// its diffable data source and forwards selection through the selected mode.
 @available(iOS 17.0, macCatalyst 17.0, *)
 @MainActor
 public struct UIKitCollectionView<

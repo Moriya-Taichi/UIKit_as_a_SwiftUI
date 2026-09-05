@@ -17,6 +17,7 @@ UIKit のビューやビューコントローラを、具体型を保ったま�
 | コーディネータを持つ `UIViewController` を表示する | `UIKitCoordinatedViewController<ControllerType, Coordinator>` |
 | 標準コントロールを `Binding` と同期する | `UIKitSlider`、`UIKitSwitch`、`UIKitTextField` など |
 | テキスト入力をモデル駆動で扱う | `UIKitTextFieldModel`、`UIKitTextViewModel`、`UIKitSearchBarModel` |
+| データと選択状態からSwiftUIの行を表示する | `UIKitTableView(data, selection:)` / `UIKitCollectionView(data, selection:layout:)` |
 | リストをモデル駆動で扱う | `UIKitListModel` と `UIKitTableView` / `UIKitCollectionView` |
 | 特殊なイニシャライザを持つビューを生成する | `UIKitViewCatalog` |
 
@@ -55,20 +56,16 @@ struct ProfileTitle: View {
 
     var body: some View {
         UIKitView(make: UILabel.init)
-            .setting(\.text, to: name)
-            .setting(\.numberOfLines, to: 0)
-            .configure {
+            .text(name)
+            .configureUIKit {
                 $0.font = .preferredFont(forTextStyle: .title1)
                 $0.adjustsFontForContentSizeCategory = true
             }
-            .accessibility(
-                UIKitAccessibility(
-                    identifier: "profile-title",
-                    label: name,
-                    traits: .header
-                )
-            )
             .measuringWithAutoLayout()
+            .lineLimit(2)
+            .accessibilityIdentifier("profile-title")
+            .accessibilityLabel(name)
+            .accessibilityAddTraits(.isHeader)
     }
 }
 ```
@@ -115,7 +112,7 @@ UIKit の標準コントロールを SwiftUI の状態と双方向に同期す�
 
 ```swift
 struct Controls: View {
-    @State private var volume: Float = 0.5
+    @State private var volume: Double = 0.5
     @State private var isEnabled = true
     @State private var query = ""
 
@@ -138,6 +135,87 @@ struct Controls: View {
 - `UIKitButton`
 
 独自の `UIControl` には `UIKitControl` を使います。内部の `UIAction` は一度だけ登録され、SwiftUI の更新時に重複せず、ビューの破棄時に解除されます。
+
+## 修飾子で設定する
+
+よく使うUIKit固有の設定には、具体型に応じた修飾子を用意しています。標準のSwiftUI修飾子とも組み合わせられます。
+
+```swift
+UIKitTextField(localized: "名前", text: $name)
+    .textFieldBorderStyle(.roundedRect)
+    .textFieldClearButtonMode(.whileEditing)
+    .uiKitKeyboardType(.default)
+    .uiKitReturnKeyType(.done)
+    .padding()
+    .disabled(isSaving)
+    .onUIKitSubmit {
+        save(name)
+    }
+```
+
+`configureUIKit`は、汎用ビュー・コントロール・入力・リストの各ブリッジで利用できる共通の設定口です。更新のたびに呼ばれるため、ビュー生成やイベント登録はここで行わず、バインドされた値やブリッジが所有するデリゲート・データソースも上書きしないでください。ビューコントローラにも同名の設定メソッドがあります。
+
+具体型に対する修飾子は、上の例のように`padding`などの一般的な修飾子より先に指定します。`onUIKitSubmit`は任意の`View`に適用でき、親から子の`UIKitTextField`と`UIKitSearchBar`の送信を受け取れます。Binding方式とモデル方式の両方で動作し、`model.events`を消費しません。標準の`onSubmit`とは別の通知で、`submitScope`の対象にはなりません。
+
+親の`disabled`と`scrollDisabled`は内部のUIKitビューにも反映されます。有効状態とスクロール可否は標準修飾子で指定してください。対応するUIKitプロパティへの直接代入よりEnvironmentを優先します。ラベルは`lineLimit`を参照し、`nil`なら行数を制限しません。明示的な`numberOfLines`や`configureUIKit`による行数指定がある場合は、その設定を優先します。SwiftUIの`Font`や`ShapeStyle`をUIKitへ任意に変換するAPIは提供していません。
+
+表示文字列には`localized:`と`verbatim:`を選べます。`UIKitSearchBar`では`localizedPrompt:` / `verbatimPrompt:`、セグメントでは`localizedTitle:`を使います。ローカライズはSwiftUIの`locale`を使って更新されます。既存の`String`を受け取る初期化子の意味は変わりません。
+
+セグメントの選択には、表示位置に依存しない値を使えます。
+
+```swift
+enum Filter: String, CaseIterable {
+    case all, favorites
+}
+
+// selectionはBinding<Filter>またはBinding<Filter?>
+UIKitSegmentedControl(Filter.allCases, selection: $filter) { $0.rawValue }
+```
+
+日付ピッカーのラベル付き初期化子は、SwiftUIの`DatePickerComponents`を受け取ります。
+
+```swift
+UIKitDatePicker("誕生日", selection: $birthday, displayedComponents: [.date])
+    .uiKitDatePickerStyle(.wheels)
+```
+
+既存のラベルなし初期化子の`displayedComponents:`は引き続き`UIDatePicker.Mode`です。UIKitのモードを直接指定する新しいコードでは`mode:`も利用できます。Sliderは`Double`などの浮動小数点Bindingを受け取れますが、UIKit内部の値とユーザー操作による書き戻しの精度は`Float`です。
+
+## データからSwiftUIの行を表示する
+
+iOS 17以降では、専用モデルを用意せず、データと選択Bindingを直接渡せます。
+
+```swift
+@available(iOS 17.0, macCatalyst 17.0, *)
+struct UserList: View {
+    struct User: Identifiable {
+        let id: Int
+        var name: String
+    }
+
+    @State private var users = [
+        User(id: 1, name: "Alice"),
+        User(id: 2, name: "Bob"),
+    ]
+    @State private var selectedIDs: Set<User.ID> = []
+
+    var body: some View {
+        UIKitTableView(users, selection: $selectedIDs) { user in
+            Label(user.name, systemImage: "person")
+        }
+    }
+}
+```
+
+単一選択には`Binding<ID?>`、複数選択には`Binding<Set<ID>>`を渡します。選択が不要なら`selection:`を省略できます。`Identifiable`でないデータには`id:`キーパスを指定します。IDは`Hashable & Sendable`かつ全行で一意である必要がありますが、表示データ自体にこれらの準拠は不要です。
+
+行は`UIHostingConfiguration`で表示され、親のEnvironmentも引き継ぎます。内容を変更してもIDが同じなら行を更新し、選択を維持します。Binding内のIDを絞り込みによって表示しなくなっても、そのIDをBindingから削除しません。再表示すると選択を復元します。データを完全に削除する場合の選択整理は呼び出し側で行ってください。
+
+`UIKitCollectionView(users, selection:layout:content:)`にも同じ形式で渡せます。複数セクションやUIKitセルの直接設定には、引き続き`UIKitListModel`を使うAPIが適しています。
+
+両リストと、汎用ブリッジで包んだ`UIScrollView`は標準の`refreshable`に対応します。非同期処理の終了に合わせて更新表示を終了し、処理中の重複要求を抑制します。ビューを破棄すると実行中のTaskをキャンセルします。処理側もキャンセルに対応してください。
+
+既存APIからの具体的な移行例と設定の優先順位は、[移行ガイド](Documentation/DeclarativeAPI.md)を参照してください。
 
 ## Observable モデルで状態とイベントを扱う
 

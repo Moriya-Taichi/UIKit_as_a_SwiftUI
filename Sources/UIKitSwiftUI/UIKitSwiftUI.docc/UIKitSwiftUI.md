@@ -14,6 +14,16 @@ View controllers use ``UIKitViewController`` or
 ``UIKitCoordinatedViewController`` so UIKit containment and appearance
 callbacks remain correct.
 
+Use typed modifiers and ``UIKitViewConfiguring`` to configure native views.
+Standard `disabled`, `scrollDisabled`, and label `lineLimit` values propagate
+from ancestors. The data initializers of ``UIKitTableView`` and
+``UIKitCollectionView`` accept stable IDs, selection bindings, and SwiftUI row
+content. Both lists support the standard `refreshable` action.
+
+`onUIKitSubmit` receives submissions from descendant text-field and search-bar
+bridges without consuming their model event streams. It is independent of
+SwiftUI's `onSubmit` and `submitScope`.
+
 Interactive views can instead be driven by observable models, in the style of
 WebKit's SwiftUI `WebPage`. The model owns the data, focus, selection, and
 policy decisions; the bridge only displays it. Delegate notifications arrive
@@ -70,6 +80,7 @@ observable-model layer — the `*Model` types, the `*Deciding` protocols,
 
 ### Configuration
 
+- ``UIKitViewConfiguring``
 - ``UIKitAccessibility``
 - ``UIKitViewCatalog``
 

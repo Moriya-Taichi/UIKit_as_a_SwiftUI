@@ -4,12 +4,12 @@ import UIKit
 /// The reuse identifier of the plain cell the bridge always registers.
 private let tableViewCellReuseIdentifier = "UIKitSwiftUI.UIKitTableView.Cell"
 
-/// A UIKit table view whose data comes from an observable `UIKitListModel`.
+/// A UIKit table view displaying SwiftUI rows or UIKit cells.
 ///
-/// The model owns the sections, the items, and the selection; the bridge owns
-/// a `UITableViewDiffableDataSource` built from the model's snapshot. Callers
-/// never implement `UITableViewDataSource`: they only describe how an item
-/// becomes a cell.
+/// Data initializers use stable IDs and optional selection bindings; row
+/// content is built with `UIHostingConfiguration`. Model initializers retain
+/// the existing `UIKitListModel` and UIKit cell-provider API. The bridge owns
+/// its diffable data source and forwards selection through the selected mode.
 @available(iOS 17.0, macCatalyst 17.0, *)
 @MainActor
 public struct UIKitTableView<
