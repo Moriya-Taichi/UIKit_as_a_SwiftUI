@@ -7,7 +7,7 @@ public struct UIKitSlider: View {
     private let value: Binding<Float>
     private let range: ClosedRange<Float>
     private let isContinuous: Bool
-    private let configure: @MainActor (UISlider) -> Void
+    private var configure: @MainActor (UISlider) -> Void
 
     public init(
         value: Binding<Float>,
@@ -43,7 +43,7 @@ public struct UIKitSlider: View {
 @MainActor
 public struct UIKitSwitch: View {
     private let isOn: Binding<Bool>
-    private let configure: @MainActor (UISwitch) -> Void
+    private var configure: @MainActor (UISwitch) -> Void
 
     public init(
         isOn: Binding<Bool>,
@@ -74,7 +74,7 @@ public struct UIKitStepper: View {
     private let value: Binding<Double>
     private let range: ClosedRange<Double>
     private let step: Double
-    private let configure: @MainActor (UIStepper) -> Void
+    private var configure: @MainActor (UIStepper) -> Void
 
     public init(
         value: Binding<Double>,
@@ -111,7 +111,7 @@ public struct UIKitStepper: View {
 public struct UIKitPageControl: View {
     private let currentPage: Binding<Int>
     private let numberOfPages: Int
-    private let configure: @MainActor (UIPageControl) -> Void
+    private var configure: @MainActor (UIPageControl) -> Void
 
     public init(
         currentPage: Binding<Int>,
@@ -140,26 +140,28 @@ public struct UIKitPageControl: View {
 /// A string-backed UIKit segmented control with a SwiftUI `Binding`.
 @MainActor
 public struct UIKitSegmentedControl: View {
-    private let titles: [String]
+    @Environment(\.locale) private var locale
+    private var titles: [UIKitDisplayText]
     private let selection: Binding<Int>
-    private let configure: @MainActor (UISegmentedControl) -> Void
+    private var configure: @MainActor (UISegmentedControl) -> Void
 
     public init(
         _ titles: [String],
         selection: Binding<Int>,
         configure: @escaping @MainActor (UISegmentedControl) -> Void = { _ in }
     ) {
-        self.titles = titles
+        self.titles = titles.map(UIKitDisplayText.verbatim)
         self.selection = selection
         self.configure = configure
     }
 
     public var body: some View {
-        UIKitControl(
+        let titles = self.titles.map { $0.resolve(in: locale) }
+        return UIKitControl(
             make: { UISegmentedControl(items: titles) },
             events: .valueChanged,
             update: { segmentedControl, _ in
-                synchronizeSegments(of: segmentedControl)
+                synchronizeSegments(of: segmentedControl, titles: titles)
                 segmentedControl.selectedSegmentIndex = selection.wrappedValue
                 configure(segmentedControl)
             },
@@ -167,7 +169,7 @@ public struct UIKitSegmentedControl: View {
         )
     }
 
-    private func synchronizeSegments(of control: UISegmentedControl) {
+    private func synchronizeSegments(of control: UISegmentedControl, titles: [String]) {
         let matches = control.numberOfSegments == titles.count
             && titles.indices.allSatisfy {
                 control.titleForSegment(at: $0) == titles[$0]
@@ -184,11 +186,13 @@ public struct UIKitSegmentedControl: View {
 /// A UIKit date picker with a SwiftUI `Binding`.
 @MainActor
 public struct UIKitDatePicker: View {
+    @Environment(\.locale) private var locale
+    private var title: UIKitDisplayText?
     private let selection: Binding<Date>
     private let range: ClosedRange<Date>?
     private let mode: UIDatePicker.Mode
     private let style: UIDatePickerStyle
-    private let configure: @MainActor (UIDatePicker) -> Void
+    private var configure: @MainActor (UIDatePicker) -> Void
 
     public init(
         selection: Binding<Date>,
@@ -205,10 +209,25 @@ public struct UIKitDatePicker: View {
     }
 
     public var body: some View {
+        if let title {
+            LabeledContent {
+                control
+            } label: {
+                Text(verbatim: title.resolve(in: locale))
+            }
+        } else {
+            control
+        }
+    }
+
+    private var control: some View {
         UIKitControl(
             make: UIDatePicker.init,
             events: .valueChanged,
-            update: { datePicker, _ in
+            update: { datePicker, context in
+                datePicker.locale = context.environment.locale
+                datePicker.calendar = context.environment.calendar
+                datePicker.timeZone = context.environment.timeZone
                 datePicker.minimumDate = range?.lowerBound
                 datePicker.maximumDate = range?.upperBound
                 datePicker.datePickerMode = mode
@@ -228,7 +247,7 @@ public struct UIKitDatePicker: View {
 public struct UIKitColorWell: View {
     private let selection: Binding<UIColor?>
     private let supportsAlpha: Bool
-    private let configure: @MainActor (UIColorWell) -> Void
+    private var configure: @MainActor (UIColorWell) -> Void
 
     public init(
         selection: Binding<UIColor?>,
@@ -259,8 +278,10 @@ public struct UIKitColorWell: View {
 /// A configuration-based UIKit button.
 @MainActor
 public struct UIKitButton: View {
+    @Environment(\.locale) private var locale
+    private var title: UIKitDisplayText?
     private let configuration: UIButton.Configuration
-    private let configure: @MainActor (UIButton) -> Void
+    private var configure: @MainActor (UIButton) -> Void
     private let action: @MainActor () -> Void
 
     public init(
@@ -288,7 +309,11 @@ public struct UIKitButton: View {
     }
 
     public var body: some View {
-        UIKitControl(
+        var configuration = self.configuration
+        if let title {
+            configuration.title = title.resolve(in: locale)
+        }
+        return UIKitControl(
             make: { UIButton(configuration: configuration) },
             events: .primaryActionTriggered,
             update: { button, _ in
@@ -300,3 +325,310 @@ public struct UIKitButton: View {
     }
 }
 
+
+extension UIKitSlider: UIKitViewConfiguring {
+    public typealias UIKitViewType = UISlider
+
+    /// Appends UIKit configuration to each update.
+    public func configureUIKit(
+        _ body: @escaping @MainActor (UISlider) -> Void
+    ) -> Self {
+        var copy = self
+        let previous = configure
+        copy.configure = { view in
+            previous(view)
+            body(view)
+        }
+        return copy
+    }
+}
+
+extension UIKitSwitch: UIKitViewConfiguring {
+    public typealias UIKitViewType = UISwitch
+
+    /// Appends UIKit configuration to each update.
+    public func configureUIKit(
+        _ body: @escaping @MainActor (UISwitch) -> Void
+    ) -> Self {
+        var copy = self
+        let previous = configure
+        copy.configure = { view in
+            previous(view)
+            body(view)
+        }
+        return copy
+    }
+}
+
+extension UIKitStepper: UIKitViewConfiguring {
+    public typealias UIKitViewType = UIStepper
+
+    /// Appends UIKit configuration to each update.
+    public func configureUIKit(
+        _ body: @escaping @MainActor (UIStepper) -> Void
+    ) -> Self {
+        var copy = self
+        let previous = configure
+        copy.configure = { view in
+            previous(view)
+            body(view)
+        }
+        return copy
+    }
+}
+
+extension UIKitPageControl: UIKitViewConfiguring {
+    public typealias UIKitViewType = UIPageControl
+
+    /// Appends UIKit configuration to each update.
+    public func configureUIKit(
+        _ body: @escaping @MainActor (UIPageControl) -> Void
+    ) -> Self {
+        var copy = self
+        let previous = configure
+        copy.configure = { view in
+            previous(view)
+            body(view)
+        }
+        return copy
+    }
+}
+
+extension UIKitSegmentedControl: UIKitViewConfiguring {
+    public typealias UIKitViewType = UISegmentedControl
+
+    /// Appends UIKit configuration to each update.
+    public func configureUIKit(
+        _ body: @escaping @MainActor (UISegmentedControl) -> Void
+    ) -> Self {
+        var copy = self
+        let previous = configure
+        copy.configure = { view in
+            previous(view)
+            body(view)
+        }
+        return copy
+    }
+}
+
+extension UIKitDatePicker: UIKitViewConfiguring {
+    public typealias UIKitViewType = UIDatePicker
+
+    /// Appends UIKit configuration to each update.
+    public func configureUIKit(
+        _ body: @escaping @MainActor (UIDatePicker) -> Void
+    ) -> Self {
+        var copy = self
+        let previous = configure
+        copy.configure = { view in
+            previous(view)
+            body(view)
+        }
+        return copy
+    }
+}
+
+extension UIKitColorWell: UIKitViewConfiguring {
+    public typealias UIKitViewType = UIColorWell
+
+    /// Appends UIKit configuration to each update.
+    public func configureUIKit(
+        _ body: @escaping @MainActor (UIColorWell) -> Void
+    ) -> Self {
+        var copy = self
+        let previous = configure
+        copy.configure = { view in
+            previous(view)
+            body(view)
+        }
+        return copy
+    }
+}
+
+extension UIKitButton: UIKitViewConfiguring {
+    public typealias UIKitViewType = UIButton
+
+    /// Appends UIKit configuration to each update.
+    public func configureUIKit(
+        _ body: @escaping @MainActor (UIButton) -> Void
+    ) -> Self {
+        var copy = self
+        let previous = configure
+        copy.configure = { view in
+            previous(view)
+            body(view)
+        }
+        return copy
+    }
+}
+
+public extension UIKitSlider {
+    /// Creates a slider for a floating-point binding, including `Double`.
+    ///
+    /// UIKit represents the range and user edits as `Float`. Displaying a value
+    /// never writes its rounded representation back to the source binding.
+    init<Value: BinaryFloatingPoint>(
+        value: Binding<Value>,
+        in range: ClosedRange<Value> = 0 ... 1,
+        isContinuous: Bool = true,
+        configure: @escaping @MainActor (UISlider) -> Void = { _ in }
+    ) {
+        let lower = Float(range.lowerBound)
+        let upper = Float(range.upperBound)
+        precondition(lower.isFinite && upper.isFinite, "UISlider requires a finite Float range.")
+        self.init(
+            value: Binding<Float>(
+                get: { Float(value.wrappedValue) },
+                set: { newValue, transaction in
+                    value.transaction(transaction).wrappedValue = Value(newValue)
+                }
+            ),
+            in: lower ... upper,
+            isContinuous: isContinuous,
+            configure: configure
+        )
+    }
+}
+
+public extension UIKitSegmentedControl {
+    /// Creates segments identified by values rather than their display indices.
+    /// Values must be unique. A selection absent from the data displays no segment.
+    init<SelectionValue: Hashable>(
+        _ values: [SelectionValue],
+        selection: Binding<SelectionValue>,
+        title: (SelectionValue) -> String
+    ) {
+        precondition(Set(values).count == values.count, "Segment values must be unique.")
+        self.init(
+            values.map(title),
+            selection: Binding(
+                get: { values.firstIndex(of: selection.wrappedValue) ?? UISegmentedControl.noSegment },
+                set: { index, transaction in
+                    guard values.indices.contains(index) else { return }
+                    selection.transaction(transaction).wrappedValue = values[index]
+                }
+            )
+        )
+    }
+
+    /// Creates value-identified segments with an optional selection.
+    init<SelectionValue: Hashable>(
+        _ values: [SelectionValue],
+        selection: Binding<SelectionValue?>,
+        title: (SelectionValue) -> String
+    ) {
+        precondition(Set(values).count == values.count, "Segment values must be unique.")
+        self.init(
+            values.map(title),
+            selection: Binding(
+                get: {
+                    guard let value = selection.wrappedValue else { return UISegmentedControl.noSegment }
+                    return values.firstIndex(of: value) ?? UISegmentedControl.noSegment
+                },
+                set: { index, transaction in
+                    if index == UISegmentedControl.noSegment {
+                        selection.transaction(transaction).wrappedValue = nil
+                    } else if values.indices.contains(index) {
+                        selection.transaction(transaction).wrappedValue = values[index]
+                    }
+                }
+            )
+        )
+    }
+
+    /// Creates value-identified segments with titles localized in the environment locale.
+    init<SelectionValue: Hashable>(
+        _ values: [SelectionValue],
+        selection: Binding<SelectionValue>,
+        localizedTitle: (SelectionValue) -> LocalizedStringResource
+    ) {
+        self.init(values, selection: selection, title: { _ in "" })
+        titles = values.map { .localized(localizedTitle($0)) }
+    }
+
+    /// Creates localized segments with an optional, value-based selection.
+    init<SelectionValue: Hashable>(
+        _ values: [SelectionValue],
+        selection: Binding<SelectionValue?>,
+        localizedTitle: (SelectionValue) -> LocalizedStringResource
+    ) {
+        self.init(values, selection: selection, title: { _ in "" })
+        titles = values.map { .localized(localizedTitle($0)) }
+    }
+}
+
+public extension UIKitDatePicker {
+    /// Creates a labeled date picker using SwiftUI's component vocabulary.
+    init(
+        _ title: LocalizedStringResource,
+        selection: Binding<Date>,
+        in range: ClosedRange<Date>? = nil,
+        displayedComponents: DatePickerComponents = [.date, .hourAndMinute],
+        style: UIDatePickerStyle = .automatic,
+        configure: @escaping @MainActor (UIDatePicker) -> Void = { _ in }
+    ) {
+        self.init(
+            selection: selection, in: range, mode: Self.mode(for: displayedComponents),
+            style: style, configure: configure
+        )
+        self.title = .localized(title)
+    }
+
+    /// Creates a labeled date picker without localizing its title.
+    init(
+        verbatim title: String,
+        selection: Binding<Date>,
+        in range: ClosedRange<Date>? = nil,
+        displayedComponents: DatePickerComponents = [.date, .hourAndMinute],
+        style: UIDatePickerStyle = .automatic,
+        configure: @escaping @MainActor (UIDatePicker) -> Void = { _ in }
+    ) {
+        self.init(
+            selection: selection, in: range, mode: Self.mode(for: displayedComponents),
+            style: style, configure: configure
+        )
+        self.title = .verbatim(title)
+    }
+
+    /// Creates an unlabeled picker with a UIKit-specific mode.
+    init(
+        selection: Binding<Date>,
+        in range: ClosedRange<Date>? = nil,
+        mode: UIDatePicker.Mode,
+        style: UIDatePickerStyle = .automatic,
+        configure: @escaping @MainActor (UIDatePicker) -> Void = { _ in }
+    ) {
+        self.init(
+            selection: selection, in: range, displayedComponents: mode,
+            style: style, configure: configure
+        )
+    }
+
+    private static func mode(for components: DatePickerComponents) -> UIDatePicker.Mode {
+        precondition(!components.isEmpty, "A date picker needs at least one displayed component.")
+        if components == .date { return .date }
+        if components == .hourAndMinute { return .time }
+        return .dateAndTime
+    }
+}
+
+public extension UIKitButton {
+    /// Creates a button whose title follows SwiftUI's environment locale.
+    init(
+        localized title: LocalizedStringResource,
+        configure: @escaping @MainActor (UIButton) -> Void = { _ in },
+        action: @escaping @MainActor () -> Void
+    ) {
+        self.init("", configure: configure, action: action)
+        self.title = .localized(title)
+    }
+
+    /// Creates a button with a title displayed without localization.
+    init(
+        verbatim title: String,
+        configure: @escaping @MainActor (UIButton) -> Void = { _ in },
+        action: @escaping @MainActor () -> Void
+    ) {
+        self.init(title, configure: configure, action: action)
+    }
+}

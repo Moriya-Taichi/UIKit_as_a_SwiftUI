@@ -13,7 +13,7 @@ public struct UIKitTextField: UIViewRepresentable {
 
     private let text: Binding<String>
     private let isFocused: Binding<Bool>?
-    private let placeholder: String?
+    private var placeholder: UIKitDisplayText?
     // stored property becomes type-erased — a stored property cannot have a
     // less-available type than its enclosing struct
     private let modelStorage: AnyObject?
@@ -22,7 +22,7 @@ public struct UIKitTextField: UIViewRepresentable {
     // SwiftUI observation dependency.
     private let modelText: String?
     private let modelIsFocused: Bool?
-    private let configure: @MainActor (UITextField) -> Void
+    private var configure: @MainActor (UITextField) -> Void
     private let onSubmit: @MainActor () -> Void
     private let shouldChange: @MainActor (NSRange, String) -> Bool
 
@@ -40,7 +40,7 @@ public struct UIKitTextField: UIViewRepresentable {
         onSubmit: @escaping @MainActor () -> Void = {},
         shouldChange: @escaping @MainActor (NSRange, String) -> Bool = { _, _ in true }
     ) {
-        self.placeholder = placeholder
+        self.placeholder = placeholder.map(UIKitDisplayText.verbatim)
         self.text = text
         self.isFocused = isFocused
         modelStorage = nil
@@ -63,7 +63,7 @@ public struct UIKitTextField: UIViewRepresentable {
         model: UIKitTextFieldModel,
         configure: @escaping @MainActor (UITextField) -> Void = { _ in }
     ) {
-        self.placeholder = placeholder
+        self.placeholder = placeholder.map(UIKitDisplayText.verbatim)
         text = .constant("")
         isFocused = nil
         modelStorage = model
@@ -76,11 +76,13 @@ public struct UIKitTextField: UIViewRepresentable {
 
     @MainActor
     public final class Coordinator: NSObject, UITextFieldDelegate {
+        fileprivate let environment = UIKitEnvironmentState()
         // stored property becomes type-erased — a stored property cannot have
         // a less-available type than its enclosing class
         fileprivate var modelStorage: AnyObject?
         fileprivate var text: Binding<String>
         fileprivate var isFocused: Binding<Bool>?
+        fileprivate var submitActions = UIKitSubmitActions()
         fileprivate var onSubmit: @MainActor () -> Void
         fileprivate var shouldChange: @MainActor (NSRange, String) -> Bool
 
@@ -155,10 +157,12 @@ public struct UIKitTextField: UIViewRepresentable {
                 let shouldReturn = model.shouldReturn(textField)
                 if shouldReturn {
                     model.handleSubmitted()
+                    submitActions()
                 }
                 return shouldReturn
             }
             onSubmit()
+            submitActions()
             return true
         }
 
@@ -210,7 +214,7 @@ public struct UIKitTextField: UIViewRepresentable {
 
     public func makeUIView(context: Context) -> UITextField {
         let textField = UITextField()
-        synchronize(textField, coordinator: context.coordinator)
+        synchronize(textField, coordinator: context.coordinator, environment: context.environment)
         textField.addTarget(
             context.coordinator,
             action: #selector(Coordinator.textDidChange(_:)),
@@ -220,13 +224,14 @@ public struct UIKitTextField: UIViewRepresentable {
     }
 
     public func updateUIView(_ uiView: UITextField, context: Context) {
-        synchronize(uiView, coordinator: context.coordinator)
+        synchronize(uiView, coordinator: context.coordinator, environment: context.environment)
     }
 
     public static func dismantleUIView(
         _ uiView: UITextField,
         coordinator: Coordinator
     ) {
+        coordinator.environment.dismantle()
         uiView.removeTarget(
             coordinator,
             action: #selector(Coordinator.textDidChange(_:)),
@@ -239,11 +244,13 @@ public struct UIKitTextField: UIViewRepresentable {
 
     private func synchronize(
         _ textField: UITextField,
-        coordinator: Coordinator
+        coordinator: Coordinator,
+        environment: EnvironmentValues
     ) {
         coordinator.modelStorage = modelStorage
         coordinator.text = text
         coordinator.isFocused = isFocused
+        coordinator.submitActions = environment.uiKitSubmitActions
         coordinator.onSubmit = onSubmit
         coordinator.shouldChange = shouldChange
 
@@ -257,15 +264,89 @@ public struct UIKitTextField: UIViewRepresentable {
         if textField.text != currentText {
             textField.text = currentText
         }
-        textField.placeholder = placeholder
-        configure(textField)
+        textField.placeholder = placeholder?.resolve(in: environment.locale)
+        coordinator.environment.update(textField, environment: environment, configure: configure)
         textField.delegate = coordinator
 
-        guard let shouldFocus = desiredFocus else { return }
+        guard let desiredFocus else { return }
+        let shouldFocus = desiredFocus && environment.isEnabled
         if shouldFocus, !textField.isFirstResponder {
             textField.becomeFirstResponder()
         } else if !shouldFocus, textField.isFirstResponder {
             textField.resignFirstResponder()
         }
+    }
+}
+
+extension UIKitTextField: UIKitViewConfiguring {
+    public typealias UIKitViewType = UITextField
+
+    /// Appends UIKit configuration to each update.
+    public func configureUIKit(
+        _ body: @escaping @MainActor (UITextField) -> Void
+    ) -> Self {
+        var copy = self
+        let previous = configure
+        copy.configure = { view in
+            previous(view)
+            body(view)
+        }
+        return copy
+    }
+}
+
+public extension UIKitTextField {
+    /// Creates a bound input with a placeholder localized using the environment locale.
+    init(
+        localized placeholder: LocalizedStringResource,
+        text: Binding<String>,
+        isFocused: Binding<Bool>? = nil,
+        configure: @escaping @MainActor (UITextField) -> Void = { _ in },
+        onSubmit: @escaping @MainActor () -> Void = {},
+        shouldChange: @escaping @MainActor (NSRange, String) -> Bool = { _, _ in true }
+    ) {
+        self.init(
+            text: text, isFocused: isFocused, configure: configure,
+            onSubmit: onSubmit, shouldChange: shouldChange
+        )
+        self.placeholder = .localized(placeholder)
+    }
+
+    /// Creates a bound input with a placeholder displayed without localization.
+    init(
+        verbatim placeholder: String,
+        text: Binding<String>,
+        isFocused: Binding<Bool>? = nil,
+        configure: @escaping @MainActor (UITextField) -> Void = { _ in },
+        onSubmit: @escaping @MainActor () -> Void = {},
+        shouldChange: @escaping @MainActor (NSRange, String) -> Bool = { _, _ in true }
+    ) {
+        self.init(
+            text: text, isFocused: isFocused, configure: configure,
+            onSubmit: onSubmit, shouldChange: shouldChange
+        )
+        self.placeholder = .verbatim(placeholder)
+    }
+
+    /// Creates a model-driven input with a localized placeholder.
+    @available(iOS 17.0, macCatalyst 17.0, *)
+    init(
+        localized placeholder: LocalizedStringResource,
+        model: UIKitTextFieldModel,
+        configure: @escaping @MainActor (UITextField) -> Void = { _ in }
+    ) {
+        self.init(model: model, configure: configure)
+        self.placeholder = .localized(placeholder)
+    }
+
+    /// Creates a model-driven input with an unlocalized placeholder.
+    @available(iOS 17.0, macCatalyst 17.0, *)
+    init(
+        verbatim placeholder: String,
+        model: UIKitTextFieldModel,
+        configure: @escaping @MainActor (UITextField) -> Void = { _ in }
+    ) {
+        self.init(model: model, configure: configure)
+        self.placeholder = .verbatim(placeholder)
     }
 }

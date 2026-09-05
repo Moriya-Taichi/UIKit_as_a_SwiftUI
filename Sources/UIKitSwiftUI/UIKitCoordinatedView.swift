@@ -10,6 +10,7 @@ public struct UIKitCoordinatedView<ViewType: UIView, CoordinatorValue>: UIViewRe
     public typealias UIViewType = ViewType
 
     public final class Coordinator {
+        fileprivate let environment = UIKitEnvironmentState()
         public let value: CoordinatorValue
         fileprivate let dismantle: @MainActor (ViewType, CoordinatorValue) -> Void
 
@@ -41,7 +42,7 @@ public struct UIKitCoordinatedView<ViewType: UIView, CoordinatorValue>: UIViewRe
 
     private let makeCoordinatorValue: @MainActor () -> CoordinatorValue
     private let make: MakeUIView
-    private let update: UpdateUIView
+    private var update: UpdateUIView
     private let dismantle: DismantleUIView
     private let measure: MeasureUIView?
 
@@ -64,17 +65,22 @@ public struct UIKitCoordinatedView<ViewType: UIView, CoordinatorValue>: UIViewRe
     }
 
     public func makeUIView(context: Context) -> ViewType {
-        make(context.coordinator.value, context)
+        let view = make(context.coordinator.value, context)
+        context.coordinator.environment.update(view, environment: context.environment) { _ in }
+        return view
     }
 
     public func updateUIView(_ uiView: ViewType, context: Context) {
-        update(uiView, context.coordinator.value, context)
+        context.coordinator.environment.update(uiView, environment: context.environment) {
+            update($0, context.coordinator.value, context)
+        }
     }
 
     public static func dismantleUIView(
         _ uiView: ViewType,
         coordinator: Coordinator
     ) {
+        coordinator.environment.dismantle()
         coordinator.dismantle(uiView, coordinator.value)
     }
 
@@ -87,3 +93,20 @@ public struct UIKitCoordinatedView<ViewType: UIView, CoordinatorValue>: UIViewRe
     }
 }
 
+
+extension UIKitCoordinatedView: UIKitViewConfiguring {
+    public typealias UIKitViewType = ViewType
+
+    /// Appends UIKit configuration to each update.
+    public func configureUIKit(
+        _ body: @escaping @MainActor (ViewType) -> Void
+    ) -> Self {
+        var copy = self
+        let previous = update
+        copy.update = { view, coordinator, context in
+            previous(view, coordinator, context)
+            body(view)
+        }
+        return copy
+    }
+}

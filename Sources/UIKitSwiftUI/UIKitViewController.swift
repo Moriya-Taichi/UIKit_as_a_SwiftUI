@@ -152,3 +152,12 @@ public extension UIKitViewController {
         )
     }
 }
+
+public extension UIKitViewController {
+    /// Appends UIKit controller configuration to each update.
+    func configureUIKit(
+        _ body: @escaping @MainActor (ControllerType) -> Void
+    ) -> Self {
+        configure(body)
+    }
+}

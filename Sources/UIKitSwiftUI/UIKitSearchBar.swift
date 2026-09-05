@@ -14,7 +14,7 @@ public struct UIKitSearchBar: UIViewRepresentable {
 
     private let text: Binding<String>
     private let isFocused: Binding<Bool>?
-    private let prompt: String?
+    private var prompt: UIKitDisplayText?
     // stored property becomes type-erased — a stored property cannot have a
     // less-available type than its enclosing struct
     private let modelStorage: AnyObject?
@@ -23,7 +23,7 @@ public struct UIKitSearchBar: UIViewRepresentable {
     // SwiftUI observation dependency.
     private let modelText: String?
     private let modelIsFocused: Bool?
-    private let configure: @MainActor (UISearchBar) -> Void
+    private var configure: @MainActor (UISearchBar) -> Void
     private let onSubmit: @MainActor () -> Void
     private let onCancel: @MainActor () -> Void
 
@@ -42,7 +42,7 @@ public struct UIKitSearchBar: UIViewRepresentable {
         onCancel: @escaping @MainActor () -> Void = {}
     ) {
         self.text = text
-        self.prompt = prompt
+        self.prompt = prompt.map(UIKitDisplayText.verbatim)
         self.isFocused = isFocused
         modelStorage = nil
         modelText = nil
@@ -66,7 +66,7 @@ public struct UIKitSearchBar: UIViewRepresentable {
         configure: @escaping @MainActor (UISearchBar) -> Void = { _ in }
     ) {
         text = .constant("")
-        self.prompt = prompt
+        self.prompt = prompt.map(UIKitDisplayText.verbatim)
         isFocused = nil
         modelStorage = model
         modelText = model.text
@@ -78,11 +78,13 @@ public struct UIKitSearchBar: UIViewRepresentable {
 
     @MainActor
     public final class Coordinator: NSObject, UISearchBarDelegate {
+        fileprivate let environment = UIKitEnvironmentState()
         // stored property becomes type-erased — a stored property cannot have
         // a less-available type than its enclosing class
         fileprivate var modelStorage: AnyObject?
         fileprivate var text: Binding<String>
         fileprivate var isFocused: Binding<Bool>?
+        fileprivate var submitActions = UIKitSubmitActions()
         fileprivate var onSubmit: @MainActor () -> Void
         fileprivate var onCancel: @MainActor () -> Void
 
@@ -158,9 +160,11 @@ public struct UIKitSearchBar: UIViewRepresentable {
         public func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
             if #available(iOS 17.0, macCatalyst 17.0, *), let model {
                 model.handleSubmitted()
+                submitActions()
                 return
             }
             onSubmit()
+            submitActions()
         }
 
         /// Reports the cancel button to the model, which leaves the query
@@ -206,18 +210,19 @@ public struct UIKitSearchBar: UIViewRepresentable {
 
     public func makeUIView(context: Context) -> UISearchBar {
         let searchBar = UISearchBar()
-        synchronize(searchBar, coordinator: context.coordinator)
+        synchronize(searchBar, coordinator: context.coordinator, environment: context.environment)
         return searchBar
     }
 
     public func updateUIView(_ uiView: UISearchBar, context: Context) {
-        synchronize(uiView, coordinator: context.coordinator)
+        synchronize(uiView, coordinator: context.coordinator, environment: context.environment)
     }
 
     public static func dismantleUIView(
         _ uiView: UISearchBar,
         coordinator: Coordinator
     ) {
+        coordinator.environment.dismantle()
         if uiView.delegate === coordinator {
             uiView.delegate = nil
         }
@@ -225,11 +230,13 @@ public struct UIKitSearchBar: UIViewRepresentable {
 
     private func synchronize(
         _ searchBar: UISearchBar,
-        coordinator: Coordinator
+        coordinator: Coordinator,
+        environment: EnvironmentValues
     ) {
         coordinator.modelStorage = modelStorage
         coordinator.text = text
         coordinator.isFocused = isFocused
+        coordinator.submitActions = environment.uiKitSubmitActions
         coordinator.onSubmit = onSubmit
         coordinator.onCancel = onCancel
 
@@ -243,15 +250,89 @@ public struct UIKitSearchBar: UIViewRepresentable {
         if searchBar.text != currentText {
             searchBar.text = currentText
         }
-        searchBar.placeholder = prompt
-        configure(searchBar)
+        searchBar.placeholder = prompt?.resolve(in: environment.locale)
+        coordinator.environment.update(searchBar, environment: environment, configure: configure)
         searchBar.delegate = coordinator
 
-        guard let shouldFocus = desiredFocus else { return }
+        guard let desiredFocus else { return }
+        let shouldFocus = desiredFocus && environment.isEnabled
         if shouldFocus, !searchBar.searchTextField.isFirstResponder {
             searchBar.searchTextField.becomeFirstResponder()
         } else if !shouldFocus, searchBar.searchTextField.isFirstResponder {
             searchBar.searchTextField.resignFirstResponder()
         }
+    }
+}
+
+extension UIKitSearchBar: UIKitViewConfiguring {
+    public typealias UIKitViewType = UISearchBar
+
+    /// Appends UIKit configuration to each update.
+    public func configureUIKit(
+        _ body: @escaping @MainActor (UISearchBar) -> Void
+    ) -> Self {
+        var copy = self
+        let previous = configure
+        copy.configure = { view in
+            previous(view)
+            body(view)
+        }
+        return copy
+    }
+}
+
+public extension UIKitSearchBar {
+    /// Creates a bound input with a placeholder localized using the environment locale.
+    init(
+        localizedPrompt prompt: LocalizedStringResource,
+        text: Binding<String>,
+        isFocused: Binding<Bool>? = nil,
+        configure: @escaping @MainActor (UISearchBar) -> Void = { _ in },
+        onSubmit: @escaping @MainActor () -> Void = {},
+        onCancel: @escaping @MainActor () -> Void = {}
+    ) {
+        self.init(
+            text: text, isFocused: isFocused, configure: configure,
+            onSubmit: onSubmit, onCancel: onCancel
+        )
+        self.prompt = .localized(prompt)
+    }
+
+    /// Creates a bound input with a placeholder displayed without localization.
+    init(
+        verbatimPrompt prompt: String,
+        text: Binding<String>,
+        isFocused: Binding<Bool>? = nil,
+        configure: @escaping @MainActor (UISearchBar) -> Void = { _ in },
+        onSubmit: @escaping @MainActor () -> Void = {},
+        onCancel: @escaping @MainActor () -> Void = {}
+    ) {
+        self.init(
+            text: text, isFocused: isFocused, configure: configure,
+            onSubmit: onSubmit, onCancel: onCancel
+        )
+        self.prompt = .verbatim(prompt)
+    }
+
+    /// Creates a model-driven input with a localized placeholder.
+    @available(iOS 17.0, macCatalyst 17.0, *)
+    init(
+        localizedPrompt prompt: LocalizedStringResource,
+        model: UIKitSearchBarModel,
+        configure: @escaping @MainActor (UISearchBar) -> Void = { _ in }
+    ) {
+        self.init(model: model, configure: configure)
+        self.prompt = .localized(prompt)
+    }
+
+    /// Creates a model-driven input with an unlocalized placeholder.
+    @available(iOS 17.0, macCatalyst 17.0, *)
+    init(
+        verbatimPrompt prompt: String,
+        model: UIKitSearchBarModel,
+        configure: @escaping @MainActor (UISearchBar) -> Void = { _ in }
+    ) {
+        self.init(model: model, configure: configure)
+        self.prompt = .verbatim(prompt)
     }
 }

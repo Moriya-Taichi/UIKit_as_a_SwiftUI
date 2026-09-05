@@ -21,7 +21,7 @@ public struct UIKitTextView: UIViewRepresentable {
     // SwiftUI observation dependency.
     private let modelText: String?
     private let modelIsFocused: Bool?
-    private let configure: @MainActor (UITextView) -> Void
+    private var configure: @MainActor (UITextView) -> Void
     private let onEditingChanged: @MainActor (Bool) -> Void
 
     @available(iOS 17.0, macCatalyst 17.0, *)
@@ -67,6 +67,7 @@ public struct UIKitTextView: UIViewRepresentable {
 
     @MainActor
     public final class Coordinator: NSObject, UITextViewDelegate {
+        fileprivate let environment = UIKitEnvironmentState()
         // stored property becomes type-erased — a stored property cannot have
         // a less-available type than its enclosing class
         fileprivate var modelStorage: AnyObject?
@@ -179,18 +180,19 @@ public struct UIKitTextView: UIViewRepresentable {
 
     public func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()
-        synchronize(textView, coordinator: context.coordinator)
+        synchronize(textView, coordinator: context.coordinator, environment: context.environment)
         return textView
     }
 
     public func updateUIView(_ uiView: UITextView, context: Context) {
-        synchronize(uiView, coordinator: context.coordinator)
+        synchronize(uiView, coordinator: context.coordinator, environment: context.environment)
     }
 
     public static func dismantleUIView(
         _ uiView: UITextView,
         coordinator: Coordinator
     ) {
+        coordinator.environment.dismantle()
         if uiView.delegate === coordinator {
             uiView.delegate = nil
         }
@@ -209,7 +211,8 @@ public struct UIKitTextView: UIViewRepresentable {
 
     private func synchronize(
         _ textView: UITextView,
-        coordinator: Coordinator
+        coordinator: Coordinator,
+        environment: EnvironmentValues
     ) {
         coordinator.modelStorage = modelStorage
         coordinator.text = text
@@ -226,14 +229,32 @@ public struct UIKitTextView: UIViewRepresentable {
         if textView.text != currentText {
             textView.text = currentText
         }
-        configure(textView)
+        coordinator.environment.update(textView, environment: environment, configure: configure)
         textView.delegate = coordinator
 
-        guard let shouldFocus = desiredFocus else { return }
+        guard let desiredFocus else { return }
+        let shouldFocus = desiredFocus && environment.isEnabled
         if shouldFocus, !textView.isFirstResponder {
             textView.becomeFirstResponder()
         } else if !shouldFocus, textView.isFirstResponder {
             textView.resignFirstResponder()
         }
+    }
+}
+
+extension UIKitTextView: UIKitViewConfiguring {
+    public typealias UIKitViewType = UITextView
+
+    /// Appends UIKit configuration to each update.
+    public func configureUIKit(
+        _ body: @escaping @MainActor (UITextView) -> Void
+    ) -> Self {
+        var copy = self
+        let previous = configure
+        copy.configure = { view in
+            previous(view)
+            body(view)
+        }
+        return copy
     }
 }
