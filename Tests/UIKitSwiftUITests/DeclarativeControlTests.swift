@@ -25,12 +25,16 @@ private struct ControlHarness: View {
     var body: some View {
         VStack {
             UIKitSlider(value: $state.value)
-                .configureUIKit { $0.accessibilityIdentifier = "slider" }
+                .configureUIKit {
+                    $0.isEnabled = false // The SwiftUI environment remains authoritative.
+                    $0.accessibilityIdentifier = "slider"
+                }
             UIKitSwitch(isOn: .constant(true))
                 .configureUIKit {
-                    $0.isEnabled = false
+                    $0.isEnabled = true // Configuration cannot override .disabled(true).
                     $0.accessibilityIdentifier = "locally-disabled"
                 }
+                .disabled(true)
             UIKitTextField(verbatim: "Name", text: $state.text)
                 .textFieldBorderStyle(.roundedRect)
                 .textFieldClearButtonMode(.whileEditing)
@@ -59,7 +63,7 @@ private struct ControlHarness: View {
 
 @MainActor
 final class DeclarativeControlTests: XCTestCase {
-    func testAncestorEnvironmentUpdatesNativeControlsAndRestoresConfiguration() async throws {
+    func testAncestorEnvironmentUpdatesNativeControlsAndPreservesLocalDisabledModifier() async throws {
         let state = ControlState()
         let host = BridgeTestHost(ControlHarness(state: state))
         defer { host.close() }
@@ -74,6 +78,7 @@ final class DeclarativeControlTests: XCTestCase {
         XCTAssertEqual(field.clearButtonMode, .whileEditing)
         XCTAssertEqual(field.keyboardType, .emailAddress)
         XCTAssertEqual(label.numberOfLines, 2)
+        XCTAssertTrue(slider.isEnabled)
         XCTAssertFalse(locallyDisabled.isEnabled)
 
         state.disabled = true

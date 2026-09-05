@@ -3,9 +3,10 @@ import UIKit
 
 /// Owns only the refresh control installed by the bridge and one refresh task.
 @MainActor
-final class UIKitRefreshCoordinator: NSObject {
+final class UIKitRefreshCoordinator {
     private weak var scrollView: UIScrollView?
     private var control: UIRefreshControl?
+    private var controlAction: UIAction?
     private var previousControl: UIRefreshControl?
     private var action: RefreshAction?
     private var task: Task<Void, Never>?
@@ -24,8 +25,10 @@ final class UIKitRefreshCoordinator: NSObject {
         }
         if control == nil {
             let control = UIRefreshControl()
-            control.addTarget(self, action: #selector(refresh), for: .valueChanged)
+            let controlAction = UIAction { [weak self] _ in self?.refresh() }
+            control.addAction(controlAction, for: .valueChanged)
             self.control = control
+            self.controlAction = controlAction
         }
         if scrollView.refreshControl !== control {
             previousControl = scrollView.refreshControl
@@ -33,7 +36,7 @@ final class UIKitRefreshCoordinator: NSObject {
         }
     }
 
-    @objc private func refresh() {
+    private func refresh() {
         guard task == nil else { return }
         guard let action else {
             control?.endRefreshing()
@@ -56,11 +59,14 @@ final class UIKitRefreshCoordinator: NSObject {
         task = nil
         action = nil
         control?.endRefreshing()
-        control?.removeTarget(self, action: #selector(refresh), for: .valueChanged)
+        if let controlAction {
+            control?.removeAction(controlAction, for: .valueChanged)
+        }
         if let control, scrollView?.refreshControl === control {
             scrollView?.refreshControl = previousControl
         }
         control = nil
+        controlAction = nil
         previousControl = nil
         scrollView = nil
     }

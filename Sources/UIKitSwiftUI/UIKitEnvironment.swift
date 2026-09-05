@@ -1,14 +1,10 @@
 import SwiftUI
 import UIKit
 
-/// Applies environment overrides without losing a view's UIKit configuration
-/// when an ancestor removes `.disabled` or `.scrollDisabled`.
+/// Applies SwiftUI's interaction, scrolling, line-limit, and refresh settings.
 @MainActor
 final class UIKitEnvironmentState {
-    private var configuredIsEnabled: Bool?
     private var configuredInteraction: Bool?
-    private var configuredScrolling: Bool?
-    private var configuredSearchEnabled: Bool?
     private let refresh = UIKitRefreshCoordinator()
 
     func update<ViewType: UIView>(
@@ -16,17 +12,8 @@ final class UIKitEnvironmentState {
         environment: EnvironmentValues,
         configure: (ViewType) -> Void
     ) {
-        if let configuredIsEnabled, let control = view as? UIControl {
-            control.isEnabled = configuredIsEnabled
-        }
         if let configuredInteraction {
             view.isUserInteractionEnabled = configuredInteraction
-        }
-        if let configuredScrolling, let scrollView = view as? UIScrollView {
-            scrollView.isScrollEnabled = configuredScrolling
-        }
-        if let configuredSearchEnabled, let searchBar = view as? UISearchBar {
-            searchBar.searchTextField.isEnabled = configuredSearchEnabled
         }
         if let label = view as? UILabel {
             // Match SwiftUI's unlimited default. An explicit numberOfLines
@@ -40,18 +27,15 @@ final class UIKitEnvironmentState {
         view.isUserInteractionEnabled = view.isUserInteractionEnabled
             && environment.isEnabled
         if let control = view as? UIControl {
-            configuredIsEnabled = control.isEnabled
-            control.isEnabled = control.isEnabled && environment.isEnabled
+            // SwiftUI can also assign this after updateUIView on newer OSes.
+            // Make the environment authoritative on every supported OS.
+            control.isEnabled = environment.isEnabled
         }
         if let searchBar = view as? UISearchBar {
-            configuredSearchEnabled = searchBar.searchTextField.isEnabled
-            searchBar.searchTextField.isEnabled = searchBar.searchTextField.isEnabled
-                && environment.isEnabled
+            searchBar.searchTextField.isEnabled = environment.isEnabled
         }
         if let scrollView = view as? UIScrollView {
-            configuredScrolling = scrollView.isScrollEnabled
-            scrollView.isScrollEnabled = scrollView.isScrollEnabled
-                && environment.isScrollEnabled
+            scrollView.isScrollEnabled = environment.isScrollEnabled
             refresh.update(scrollView, action: environment.refresh)
         }
     }
