@@ -9,6 +9,7 @@ import UIKit
 public struct UIKitCoordinatedView<ViewType: UIView, CoordinatorValue>: UIViewRepresentable {
     public typealias UIViewType = ViewType
 
+    @MainActor
     public final class Coordinator {
         fileprivate let environment = UIKitEnvironmentState()
         public let value: CoordinatorValue

@@ -20,6 +20,7 @@ public struct UIKitView<ViewType: UIView>: UIViewRepresentable {
 
     /// The coordinator is public so `UIKitView` remains usable across module
     /// boundaries. Its lifecycle details intentionally stay encapsulated.
+    @MainActor
     public final class Coordinator {
         fileprivate let environment = UIKitEnvironmentState()
         fileprivate let dismantle: DismantleUIView
