@@ -18,16 +18,16 @@ private struct LocalizationHarness: View {
     var body: some View {
         VStack {
             AppKitTextField(resource, text: .constant(""))
-                .configureAppKit { $0.identifier = "localized-field" }
+                .configureAppKit { $0.identifier = NSUserInterfaceItemIdentifier("localized-field") }
             AppKitSearchField(resource, text: .constant(""))
-                .configureAppKit { $0.identifier = "localized-search" }
+                .configureAppKit { $0.identifier = NSUserInterfaceItemIdentifier("localized-search") }
             AppKitButton(resource) {}
-                .configureAppKit { $0.identifier = "localized-button" }
+                .configureAppKit { $0.identifier = NSUserInterfaceItemIdentifier("localized-button") }
             AppKitView(make: { NSTextField(labelWithString: "") })
                 .text(localized: resource)
-                .configureAppKit { $0.identifier = "localized-label" }
+                .configureAppKit { $0.identifier = NSUserInterfaceItemIdentifier("localized-label") }
             AppKitTextField(verbatim: "PersonName", text: .constant(""))
-                .configureAppKit { $0.identifier = "verbatim-field" }
+                .configureAppKit { $0.identifier = NSUserInterfaceItemIdentifier("verbatim-field") }
         }
         .environment(\.locale, state.locale)
     }
