@@ -144,7 +144,7 @@ public struct AppKitSegmentedControl<SelectionValue: Hashable>: View, AppKitView
     }
 
     public init(_ values: [SelectionValue], selection: Binding<SelectionValue>, title: (SelectionValue) -> String) {
-        self.init(values, selection: Binding(get: { selection.wrappedValue }, set: { value, transaction in
+        self.init(values, selection: Binding<SelectionValue?>(get: { selection.wrappedValue }, set: { value, transaction in
             if let value { selection.transaction(transaction).wrappedValue = value }
         }), title: title)
     }
@@ -157,7 +157,7 @@ public struct AppKitSegmentedControl<SelectionValue: Hashable>: View, AppKitView
     }
 
     public init(_ values: [SelectionValue], selection: Binding<SelectionValue>, localizedTitle: (SelectionValue) -> LocalizedStringResource) {
-        self.init(values, selection: Binding(get: { selection.wrappedValue }, set: { value, transaction in
+        self.init(values, selection: Binding<SelectionValue?>(get: { selection.wrappedValue }, set: { value, transaction in
             if let value { selection.transaction(transaction).wrappedValue = value }
         }), localizedTitle: localizedTitle)
     }

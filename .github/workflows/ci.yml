@@ -46,7 +46,7 @@ jobs:
       - name: Test on iOS Simulator
         run: >-
           xcodebuild test
-          -scheme UIKitSwiftUI
+          -scheme UIKitSwiftUI-Package
           -destination 'platform=iOS Simulator,name=${{ matrix.simulator }},OS=latest'
           CODE_SIGNING_ALLOWED=NO
 
@@ -69,7 +69,7 @@ jobs:
       - name: Test on iOS 16 Simulator
         run: >-
           xcodebuild test
-          -scheme UIKitSwiftUI
+          -scheme UIKitSwiftUI-Package
           -destination 'platform=iOS Simulator,name=iPhone-14-iOS-16-4,OS=16.4'
           CODE_SIGNING_ALLOWED=NO
 
@@ -94,6 +94,6 @@ jobs:
       - name: Print toolchain
         run: xcodebuild -version
       - name: Build AppKit with macOS 13 deployment target
-        run: swift build --product AppKitSwiftUI
+        run: swift build --target AppKitSwiftUI
       - name: Test native AppKit bridges
         run: swift test
