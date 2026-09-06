@@ -41,6 +41,17 @@ private struct ControlHarness: View {
 
 @MainActor
 final class AppKitControlTests: XCTestCase {
+    func testDisabledScrollersRemainDisabledAfterLayout() async {
+        let scroll = AppKitManagedScrollView(frame: NSRect(x: 0, y: 0, width: 200, height: 100))
+        scroll.hasVerticalScroller = true
+        scroll.hasHorizontalScroller = true
+        scroll.documentView = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: 800))
+        scroll.allowsUserScrolling = false
+        scroll.tile()
+        XCTAssertEqual(scroll.verticalScroller?.isEnabled, false)
+        XCTAssertEqual(scroll.horizontalScroller?.isEnabled, false)
+    }
+
     func testActionUsesLatestClosureAndRestoresOriginalTargetOnDismantle() async throws {
         let state = ControlState()
         let original = OriginalTarget()

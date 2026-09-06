@@ -40,9 +40,16 @@ final class AppKitEnvironmentState {
 @MainActor
 public class AppKitManagedScrollView: NSScrollView {
     public internal(set) var allowsUserScrolling = true {
-        didSet {
-            verticalScroller?.isEnabled = allowsUserScrolling
-            horizontalScroller?.isEnabled = allowsUserScrolling
+        didSet { tile() }
+    }
+
+    public override func tile() {
+        super.tile()
+        // AppKit recalculates scroller availability while tiling. Apply the
+        // environment restriction after each recalculation, including resize.
+        if !allowsUserScrolling {
+            verticalScroller?.isEnabled = false
+            horizontalScroller?.isEnabled = false
         }
     }
 

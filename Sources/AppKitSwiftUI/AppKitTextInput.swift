@@ -35,9 +35,10 @@ public struct AppKitTextInput<Field: NSTextField>: NSViewRepresentable, AppKitVi
     public func updateNSView(_ nsView: Field, context: Context) {
         let coordinator = context.coordinator
         coordinator.text = $text
+        let submitActions = context.environment.appKitSubmitActions
         coordinator.submit = {
             onSubmit()
-            context.environment.appKitSubmitActions()
+            submitActions()
         }
         coordinator.environment.update(nsView, environment: context.environment) { field in
             configure(field)
