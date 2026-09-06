@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import SwiftUI
 import UIKit
 
@@ -350,3 +351,4 @@ public extension UIKitTextField {
         self.placeholder = .verbatim(placeholder)
     }
 }
+#endif

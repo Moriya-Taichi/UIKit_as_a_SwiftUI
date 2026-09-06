@@ -1,8 +1,8 @@
-#if canImport(UIKit)
+#if os(macOS)
 import Foundation
 
-/// Resolves localized UIKit strings again when SwiftUI's locale changes.
-enum UIKitDisplayText {
+/// Resolves localized AppKit strings again when SwiftUI's locale changes.
+enum AppKitDisplayText {
     case verbatim(String)
     case localized(LocalizedStringResource)
 

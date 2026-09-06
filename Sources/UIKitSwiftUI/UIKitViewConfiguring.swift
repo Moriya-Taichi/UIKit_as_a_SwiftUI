@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import SwiftUI
 import UIKit
 
@@ -98,3 +99,4 @@ public extension UIKitViewConfiguring where UIKitViewType: UISlider {
         configureUIKit { $0.isContinuous = isContinuous }
     }
 }
+#endif

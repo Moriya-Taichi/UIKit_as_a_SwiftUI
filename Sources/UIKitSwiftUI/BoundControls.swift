@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import SwiftUI
 import UIKit
 
@@ -632,3 +633,4 @@ public extension UIKitButton {
         self.init(title, configure: configure, action: action)
     }
 }
+#endif

@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import Observation
 import SwiftUI
 import UIKit
@@ -184,3 +185,4 @@ public final class UIKitTextFieldModel: Observable {
         decider?.shouldReturn(textField) ?? true
     }
 }
+#endif

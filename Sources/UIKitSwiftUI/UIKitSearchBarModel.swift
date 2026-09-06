@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import Observation
 import SwiftUI
 import UIKit
@@ -174,3 +175,4 @@ public final class UIKitSearchBarModel: Observable {
         ) ?? true
     }
 }
+#endif

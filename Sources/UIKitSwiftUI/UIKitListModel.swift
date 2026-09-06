@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import Observation
 import SwiftUI
 import UIKit
@@ -175,3 +176,4 @@ public extension UIKitListModel where SectionID == Int {
         set { sections = [Section(id: 0, items: newValue)] }
     }
 }
+#endif

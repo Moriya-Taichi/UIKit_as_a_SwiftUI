@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import SwiftUI
 import UIKit
 
@@ -84,3 +85,4 @@ struct UIKitIdentifiedData<Element, ID: Hashable & Sendable> {
         self.elements = elements
     }
 }
+#endif

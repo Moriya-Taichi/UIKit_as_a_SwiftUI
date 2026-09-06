@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import SwiftUI
 import UIKit
 
@@ -71,3 +72,4 @@ final class UIKitRefreshCoordinator {
         scrollView = nil
     }
 }
+#endif

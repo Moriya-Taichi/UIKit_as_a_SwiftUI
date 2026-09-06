@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import UIKit
 
 /// Policy decisions for a bridged search bar.
@@ -46,3 +47,4 @@ public extension UIKitSearchBarDeciding {
         searchBar: UISearchBar
     ) -> Bool { true }
 }
+#endif

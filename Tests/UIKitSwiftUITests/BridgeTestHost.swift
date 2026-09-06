@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import SwiftUI
 import UIKit
 import XCTest
@@ -43,3 +44,4 @@ func waitForBridge(_ condition: @escaping @MainActor () -> Bool) async -> Bool {
     }
     return condition()
 }
+#endif

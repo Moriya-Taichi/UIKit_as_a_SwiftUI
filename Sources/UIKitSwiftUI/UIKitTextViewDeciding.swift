@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import UIKit
 
 /// Policy decisions for a bridged text view.
@@ -46,3 +47,4 @@ public extension UIKitTextViewDeciding {
         textView: UITextView
     ) -> Bool { true }
 }
+#endif

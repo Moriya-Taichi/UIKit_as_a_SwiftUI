@@ -1,15 +1,15 @@
-#if canImport(UIKit)
+#if os(macOS)
 import SwiftUI
-import UIKit
+import AppKit
 
-/// A lifecycle-aware SwiftUI representation of any `UIViewController` subclass.
+/// A lifecycle-aware SwiftUI representation of any `NSViewController` subclass.
 ///
-/// View controllers cannot correctly be embedded with `UIViewRepresentable`.
-/// This bridge uses `UIViewControllerRepresentable`, preserving containment and
-/// appearance callbacks while matching the closure API of `UIKitView`.
+/// View controllers cannot correctly be embedded with `NSViewRepresentable`.
+/// This bridge uses `NSViewControllerRepresentable`, preserving containment and
+/// appearance callbacks while matching the closure API of `AppKitView`.
 @MainActor
-public struct UIKitViewController<ControllerType: UIViewController>: UIViewControllerRepresentable {
-    public typealias UIViewControllerType = ControllerType
+public struct AppKitViewController<ControllerType: NSViewController>: NSViewControllerRepresentable {
+    public typealias NSViewControllerType = ControllerType
     public typealias MakeController = @MainActor (Context) -> ControllerType
     public typealias UpdateController = @MainActor (ControllerType, Context) -> Void
     public typealias DismantleController = @MainActor (ControllerType) -> Void
@@ -86,34 +86,34 @@ public struct UIKitViewController<ControllerType: UIViewController>: UIViewContr
         Coordinator(dismantle: dismantle)
     }
 
-    public func makeUIViewController(context: Context) -> ControllerType {
+    public func makeNSViewController(context: Context) -> ControllerType {
         make(context)
     }
 
-    public func updateUIViewController(
-        _ uiViewController: ControllerType,
+    public func updateNSViewController(
+        _ nsViewController: ControllerType,
         context: Context
     ) {
-        update(uiViewController, context)
+        update(nsViewController, context)
     }
 
-    public static func dismantleUIViewController(
-        _ uiViewController: ControllerType,
+    public static func dismantleNSViewController(
+        _ nsViewController: ControllerType,
         coordinator: Coordinator
     ) {
-        coordinator.dismantle(uiViewController)
+        coordinator.dismantle(nsViewController)
     }
 
     public func sizeThatFits(
         _ proposal: ProposedViewSize,
-        uiViewController: ControllerType,
+        nsViewController: ControllerType,
         context: Context
     ) -> CGSize? {
-        measure?(proposal, uiViewController, context)
+        measure?(proposal, nsViewController, context)
     }
 }
 
-public extension UIKitViewController {
+public extension AppKitViewController {
     func configure(
         _ body: @escaping @MainActor (ControllerType) -> Void
     ) -> Self {
@@ -154,9 +154,9 @@ public extension UIKitViewController {
     }
 }
 
-public extension UIKitViewController {
-    /// Appends UIKit controller configuration to each update.
-    func configureUIKit(
+public extension AppKitViewController {
+    /// Appends AppKit controller configuration to each update.
+    func configureAppKit(
         _ body: @escaping @MainActor (ControllerType) -> Void
     ) -> Self {
         configure(body)

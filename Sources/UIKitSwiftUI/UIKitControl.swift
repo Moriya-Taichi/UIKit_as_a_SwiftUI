@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import SwiftUI
 import UIKit
 
@@ -131,3 +132,4 @@ extension UIKitControl: UIKitViewConfiguring {
         return copy
     }
 }
+#endif

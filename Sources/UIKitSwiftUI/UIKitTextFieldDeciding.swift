@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import UIKit
 
 /// Policy decisions for a bridged text field.
@@ -58,3 +59,4 @@ public extension UIKitTextFieldDeciding {
     /// Allows the return key to submit.
     func shouldReturn(_ textField: UITextField) -> Bool { true }
 }
+#endif

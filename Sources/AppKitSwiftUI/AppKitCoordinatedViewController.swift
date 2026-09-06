@@ -1,14 +1,14 @@
-#if canImport(UIKit)
+#if os(macOS)
 import SwiftUI
-import UIKit
+import AppKit
 
-/// A `UIViewControllerRepresentable` bridge with a caller-owned coordinator.
+/// A `NSViewControllerRepresentable` bridge with a caller-owned coordinator.
 @MainActor
-public struct UIKitCoordinatedViewController<
-    ControllerType: UIViewController,
+public struct AppKitCoordinatedViewController<
+    ControllerType: NSViewController,
     CoordinatorValue
->: UIViewControllerRepresentable {
-    public typealias UIViewControllerType = ControllerType
+>: NSViewControllerRepresentable {
+    public typealias NSViewControllerType = ControllerType
 
     public final class Coordinator {
         public let value: CoordinatorValue
@@ -73,36 +73,36 @@ public struct UIKitCoordinatedViewController<
         Coordinator(value: makeCoordinatorValue(), dismantle: dismantle)
     }
 
-    public func makeUIViewController(context: Context) -> ControllerType {
+    public func makeNSViewController(context: Context) -> ControllerType {
         make(context.coordinator.value, context)
     }
 
-    public func updateUIViewController(
-        _ uiViewController: ControllerType,
+    public func updateNSViewController(
+        _ nsViewController: ControllerType,
         context: Context
     ) {
         update(
-            uiViewController,
+            nsViewController,
             context.coordinator.value,
             context
         )
     }
 
-    public static func dismantleUIViewController(
-        _ uiViewController: ControllerType,
+    public static func dismantleNSViewController(
+        _ nsViewController: ControllerType,
         coordinator: Coordinator
     ) {
-        coordinator.dismantle(uiViewController, coordinator.value)
+        coordinator.dismantle(nsViewController, coordinator.value)
     }
 
     public func sizeThatFits(
         _ proposal: ProposedViewSize,
-        uiViewController: ControllerType,
+        nsViewController: ControllerType,
         context: Context
     ) -> CGSize? {
         measure?(
             proposal,
-            uiViewController,
+            nsViewController,
             context.coordinator.value,
             context
         )
@@ -110,9 +110,9 @@ public struct UIKitCoordinatedViewController<
 }
 
 
-public extension UIKitCoordinatedViewController {
-    /// Appends UIKit controller configuration to each update.
-    func configureUIKit(
+public extension AppKitCoordinatedViewController {
+    /// Appends AppKit controller configuration to each update.
+    func configureAppKit(
         _ body: @escaping @MainActor (ControllerType) -> Void
     ) -> Self {
         var copy = self

@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import Foundation
 import SwiftUI
 import UIKit
@@ -81,3 +82,4 @@ final class LocalizationBridgeTests: XCTestCase {
         XCTAssertTrue(host.view(UITextField.self, id: "localized-field") === field)
     }
 }
+#endif

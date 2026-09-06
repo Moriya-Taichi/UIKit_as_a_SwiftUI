@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import SwiftUI
 import UIKit
 
@@ -391,3 +392,4 @@ public extension UIKitTableView where SectionID == Int {
         )
     }
 }
+#endif

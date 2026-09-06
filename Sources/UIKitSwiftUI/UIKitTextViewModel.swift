@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import Observation
 import SwiftUI
 import UIKit
@@ -167,3 +168,4 @@ public final class UIKitTextViewModel: Observable {
         ) ?? true
     }
 }
+#endif

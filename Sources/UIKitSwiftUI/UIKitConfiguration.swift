@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import SwiftUI
 import UIKit
 
@@ -65,4 +66,4 @@ public extension UIKitViewController {
         configure { $0[keyPath: keyPath] = value }
     }
 }
-
+#endif
