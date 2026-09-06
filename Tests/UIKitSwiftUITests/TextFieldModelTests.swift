@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import SwiftUI
 import UIKit
 import XCTest
@@ -211,3 +212,4 @@ final class TextFieldModelTests: XCTestCase {
         )
     }
 }
+#endif

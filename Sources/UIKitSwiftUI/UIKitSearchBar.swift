@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import SwiftUI
 import UIKit
 
@@ -336,3 +337,4 @@ public extension UIKitSearchBar {
         self.prompt = .verbatim(prompt)
     }
 }
+#endif

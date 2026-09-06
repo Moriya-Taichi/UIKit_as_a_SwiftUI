@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import SwiftUI
 import UIKit
 import XCTest
@@ -462,3 +463,4 @@ final class TextInputModelTests: XCTestCase {
         XCTAssertTrue(recorder.didCancel)
     }
 }
+#endif

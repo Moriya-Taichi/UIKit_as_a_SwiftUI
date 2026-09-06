@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import SwiftUI
 import UIKit
 
@@ -27,3 +28,4 @@ public extension View {
         UIHostingController(rootView: self)
     }
 }
+#endif

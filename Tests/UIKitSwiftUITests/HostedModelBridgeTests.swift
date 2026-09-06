@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import SwiftUI
 import UIKit
 import XCTest
@@ -199,3 +200,4 @@ final class HostedModelBridgeTests: XCTestCase {
         return nil
     }
 }
+#endif

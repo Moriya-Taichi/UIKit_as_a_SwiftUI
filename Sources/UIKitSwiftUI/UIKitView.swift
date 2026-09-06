@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import SwiftUI
 import UIKit
 
@@ -208,3 +209,4 @@ public extension UIKitView where ViewType: UILabel {
         self.text(text)
     }
 }
+#endif

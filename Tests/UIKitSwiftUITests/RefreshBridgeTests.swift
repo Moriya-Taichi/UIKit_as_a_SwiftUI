@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import SwiftUI
 import UIKit
 import XCTest
@@ -90,3 +91,4 @@ final class RefreshBridgeTests: XCTestCase {
         XCTAssertEqual(state.calls, 1)
     }
 }
+#endif

@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import Foundation
 
 /// Resolves localized UIKit strings again when SwiftUI's locale changes.
@@ -15,3 +16,4 @@ enum UIKitDisplayText {
         }
     }
 }
+#endif

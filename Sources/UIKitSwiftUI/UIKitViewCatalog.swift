@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import SwiftUI
 import UIKit
 
@@ -219,4 +220,4 @@ public extension UIKitViewCatalog {
         )
     }
 }
-
+#endif

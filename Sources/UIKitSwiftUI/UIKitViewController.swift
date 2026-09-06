@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import SwiftUI
 import UIKit
 
@@ -161,3 +162,4 @@ public extension UIKitViewController {
         configure(body)
     }
 }
+#endif

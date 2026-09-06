@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import SwiftUI
 import UIKit
 import XCTest
@@ -190,3 +191,4 @@ final class DeclarativeListTests: XCTestCase {
         _ = UIKitCollectionView(["a"], id: \.self, layout: UICollectionViewFlowLayout.init) { Text($0) }
     }
 }
+#endif

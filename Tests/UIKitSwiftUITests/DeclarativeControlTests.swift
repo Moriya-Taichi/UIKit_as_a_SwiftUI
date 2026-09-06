@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import SwiftUI
 import UIKit
 import XCTest
@@ -206,3 +207,4 @@ final class DeclarativeControlTests: XCTestCase {
         _ = UIKitSearchBar(localizedPrompt: "Search", text: .constant(""))
     }
 }
+#endif

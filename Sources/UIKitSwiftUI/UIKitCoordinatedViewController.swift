@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import SwiftUI
 import UIKit
 
@@ -123,3 +124,4 @@ public extension UIKitCoordinatedViewController {
         return copy
     }
 }
+#endif

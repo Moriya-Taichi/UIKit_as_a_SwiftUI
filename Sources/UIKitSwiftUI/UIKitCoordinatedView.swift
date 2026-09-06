@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import SwiftUI
 import UIKit
 
@@ -111,3 +112,4 @@ extension UIKitCoordinatedView: UIKitViewConfiguring {
         return copy
     }
 }
+#endif
