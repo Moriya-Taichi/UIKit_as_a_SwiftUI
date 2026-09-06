@@ -31,7 +31,7 @@ private struct ListHarness: View {
     var body: some View {
         VStack {
             AppKitTableView(state.people, selection: $state.selection) { person in
-                AppKitView(make: { NSTextField(labelWithString: "") }, update: { field, context in
+                AppKitView(make: { _ in NSTextField(labelWithString: "") }, update: { field, context in
                     field.stringValue = person.name + context.environment.rowSuffix
                     field.identifier = NSUserInterfaceItemIdentifier("table-\(person.id)")
                 })
@@ -41,7 +41,7 @@ private struct ListHarness: View {
                 layout.itemSize = NSSize(width: 200, height: 44)
                 return layout
             }) { person in
-                AppKitView(make: { NSTextField(labelWithString: "") }, update: { field, context in
+                AppKitView(make: { _ in NSTextField(labelWithString: "") }, update: { field, context in
                     field.stringValue = person.name + context.environment.rowSuffix
                     field.identifier = NSUserInterfaceItemIdentifier("collection-\(person.id)")
                 })

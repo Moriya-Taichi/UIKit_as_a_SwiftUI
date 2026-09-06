@@ -22,7 +22,7 @@ public enum AppKitBridge {
 }
 
 public extension View {
-    /// Creates a AppKit hosting controller for this SwiftUI value.
+    /// Creates an AppKit hosting controller for this SwiftUI value.
     @MainActor
     func hostedInAppKit() -> NSHostingController<Self> {
         NSHostingController(rootView: self)

@@ -300,4 +300,27 @@ public extension AppKitDatePicker {
         return copy
     }
 }
+/// A native color well that preserves AppKit color spaces in its Binding.
+@MainActor
+public struct AppKitColorWell: View, AppKitViewConfiguring {
+    public typealias AppKitViewType = NSColorWell
+    @Binding private var selection: NSColor
+    private var configure: @MainActor (NSColorWell) -> Void = { _ in }
+
+    public init(selection: Binding<NSColor>) { _selection = selection }
+
+    public var body: some View {
+        AppKitControl(make: { NSColorWell() }, update: { well, _ in
+            configure(well)
+            well.color = selection
+        }, onEvent: { selection = $0.color })
+    }
+
+    public func configureAppKit(_ body: @escaping @MainActor (NSColorWell) -> Void) -> Self {
+        var copy = self
+        let previous = configure
+        copy.configure = { well in previous(well); body(well) }
+        return copy
+    }
+}
 #endif

@@ -2,9 +2,11 @@
 
 [![CI](https://github.com/Moriya-Taichi/UIKit_as_a_SwiftUI/actions/workflows/ci.yml/badge.svg)](https://github.com/Moriya-Taichi/UIKit_as_a_SwiftUI/actions/workflows/ci.yml)
 
-UIKit のビューやビューコントローラを、具体型を保ったまま SwiftUI に組み込むための Swift Package です。
+UIKit / AppKit のビューやビューコントローラを、具体型を保ったまま SwiftUI に組み込むための Swift Package です。
 
 ジェネリックなブリッジを中心に、SwiftUI の `Binding` に対応した標準コントロールや、状態とイベントをまとめて扱う Observable モデルを提供します。UIKit の標準ビューだけでなく、アプリ独自の `UIView` や新しい SDK で追加されたビューも、ライブラリの更新を待たずに利用できます。
+
+macOSネイティブのアプリには `AppKitSwiftUI`、iOS / Mac Catalystには `UIKitSwiftUI` を使います。AppKitの利用方法は [AppKitガイド](Documentation/AppKit.md) を参照してください。以下のUIKit APIは引き続き利用できます。
 
 ## API の選び方
 
@@ -25,12 +27,13 @@ UIKit のビューやビューコントローラを、具体型を保ったま�
 
 ## 対応環境
 
-- iOS 16 以降、または Mac Catalyst 16 以降
+- `UIKitSwiftUI`: iOS 16 以降、または Mac Catalyst 16 以降
+- `AppKitSwiftUI`: macOS 13 以降
 - Swift 6 / Xcode 16 以降
 - Observable モデルを使う API は iOS 17 以降
 - iOS 27 固有の API を使う場合は Xcode 27
 
-CI では Xcode 16 の iOS 18 SDK と Xcode 27 の iOS 27 SDK でビルドし、iOS 16.4 を含むシミュレータでテストしています。
+CIではXcode 16 / 27でiOS・Mac Catalyst・ネイティブmacOSをビルドし、iOS 16.4を含むシミュレータとmacOS上でテストします。macOS 13はデプロイメントターゲットであり、macOS 13実機での実行検証を意味しません。
 
 ## インストール
 
@@ -40,13 +43,41 @@ Xcode の **File > Add Package Dependencies** から、次の URL を追加し�
 https://github.com/Moriya-Taichi/UIKit_as_a_SwiftUI.git
 ```
 
-利用するファイルでモジュールをインポートしてください。
+アプリのターゲットに対応するライブラリ製品を追加し、モジュールをインポートしてください。
 
 ```swift
 import UIKitSwiftUI
 ```
 
-## 基本的な使い方
+## AppKitを使う
+
+macOSアプリでは `AppKitSwiftUI` 製品を追加します。UIKitと同じように、状態を初期化子へ渡し、設定を修飾子で指定できます。
+
+```swift
+import AppKitSwiftUI
+
+struct MacEditor: View {
+    @State private var name = ""
+    @State private var volume = 0.5
+    @State private var enabled = true
+
+    var body: some View {
+        VStack {
+            AppKitTextField("名前", text: $name)
+                .textFieldBezelStyle(.roundedBezel)
+            AppKitSlider(value: $volume)
+                .sliderContinuousUpdates(true)
+            AppKitToggle("有効", isOn: $enabled)
+            AppKitTextView(text: $name)
+        }
+        .padding()
+    }
+}
+```
+
+任意の `NSView` には `AppKitView`、`NSViewController` には `AppKitViewController` を使います。`AppKitTableView` / `AppKitCollectionView` には、データ・ID・選択Binding・SwiftUIの行を渡せます。詳細とUIKit版との対応表は [AppKitガイド](Documentation/AppKit.md) にまとめています。
+
+## UIKitの基本的な使い方
 
 `UIKitView` の `make` で UIKit ビューを生成し、修飾子または `update` クロージャで状態を反映します。具体型は消去されないため、`UILabel` 固有のプロパティにもそのままアクセスできます。
 

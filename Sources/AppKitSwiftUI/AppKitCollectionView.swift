@@ -112,7 +112,7 @@ final class AppKitHostingCollectionItem: NSCollectionViewItem {
     override func loadView() {
         let box = NSBox()
         box.boxType = .custom
-        box.borderType = .noBorder
+        box.borderWidth = 0
         box.contentViewMargins = .zero
         box.fillColor = .clear
         view = box

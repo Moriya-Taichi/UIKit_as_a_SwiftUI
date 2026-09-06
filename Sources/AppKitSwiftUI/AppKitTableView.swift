@@ -85,7 +85,11 @@ public struct AppKitTableView<ID: Hashable, RowContent: View>: NSViewRepresentab
         table.allowsMultipleSelection = selection.allowsMultiple
         table.allowsEmptySelection = true
         nsView.allowsUserScrolling = context.environment.isScrollEnabled
-        if changedIDs || table.numberOfRows != data.ids.count { table.reloadData() }
+        if changedIDs || table.numberOfRows != data.ids.count {
+            table.reloadData()
+        } else if table.usesAutomaticRowHeights {
+            table.noteHeightOfRows(withIndexesChanged: IndexSet(integersIn: 0..<data.ids.count))
+        }
         let indexes = IndexSet(data.ids.indices.filter { selectedIDs.contains(data.ids[$0]) })
         if table.selectedRowIndexes != indexes { table.selectRowIndexes(indexes, byExtendingSelection: false) }
     }

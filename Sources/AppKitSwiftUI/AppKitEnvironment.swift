@@ -72,7 +72,7 @@ extension EnvironmentValues {
 }
 
 public extension View {
-    /// Receives Return/search submissions from descendant AppKit text fields.
+    /// Receives Return submissions from descendant AppKit text fields.
     /// Independent of SwiftUI's `onSubmit` and `submitScope`.
     func onAppKitSubmit(_ action: @escaping @MainActor @Sendable () -> Void) -> some View {
         transformEnvironment(\.appKitSubmitActions) { $0.actions.append(action) }

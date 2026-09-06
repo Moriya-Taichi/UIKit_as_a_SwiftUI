@@ -85,6 +85,7 @@ public struct AppKitControl<ControlType: NSControl>: NSViewRepresentable, AppKit
     }
 
     public static func dismantleNSView(_ nsView: ControlType, coordinator: Coordinator) {
+        (nsView as? NSColorWell)?.deactivate()
         coordinator.uninstall(from: nsView)
         coordinator.environment.dismantle()
     }

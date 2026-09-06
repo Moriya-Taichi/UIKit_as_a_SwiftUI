@@ -29,6 +29,7 @@ final class AppKitModuleTests: XCTestCase {
         _ = AppKitSecureField("Password", text: .constant(""))
         _ = AppKitSearchField("Search", text: .constant(""))
         _ = AppKitTextView(text: .constant(""))
+        _ = AppKitColorWell(selection: .constant(.red))
     }
 }
 #endif
