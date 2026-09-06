@@ -13,9 +13,7 @@ let package = Package(
         .library(name: "AppKitSwiftUI", targets: ["AppKitSwiftUI"]),
         .library(
             name: "UIKitSwiftUI",
-            targets: [
-        .target(name: "AppKitSwiftUI"),
-        .testTarget(name: "AppKitSwiftUITests", dependencies: ["AppKitSwiftUI"]),"UIKitSwiftUI"]
+            targets: ["UIKitSwiftUI"]
         ),
     ],
     targets: [
@@ -28,4 +26,3 @@ let package = Package(
         ),
     ]
 )
-
